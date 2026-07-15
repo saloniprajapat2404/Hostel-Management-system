@@ -1,38 +1,85 @@
-import { useNavigate } from 'react-router-dom'
-import HostelLogo from '../components/HostelLogo'
-import { clearSession, getSession, isGuestMode } from '../utils/auth'
+import { useCallback, useEffect, useState } from 'react'
+import { apiGet } from '../utils/api'
+import { getSession } from '../utils/auth'
+import { Card, ErrorBlock, LoadingBlock, PageHeader } from '../components/ui/Page'
+
+const LABELS = {
+  totalRooms: 'Total rooms',
+  totalBeds: 'Total beds',
+  occupiedBeds: 'Occupied beds',
+  vacantBeds: 'Vacant beds',
+  activeAllocations: 'Active allocations',
+  activeNotices: 'Active notices',
+  students: 'Students',
+  wardens: 'Wardens',
+  admins: 'Admins',
+  pendingAdmissions: 'Pending admissions',
+  openComplaints: 'Open complaints',
+  inProgressComplaints: 'In-progress complaints',
+  myOpenComplaints: 'My open complaints',
+  hasAllocation: 'Room allocated',
+}
+
+function formatValue(key, value) {
+  if (key === 'hasAllocation') return value ? 'Yes' : 'No'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  return value
+}
 
 export default function Dashboard() {
-  const navigate = useNavigate()
   const user = getSession()
-  const guest = isGuestMode()
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const handleSignOut = () => {
-    clearSession()
-    navigate('/')
-  }
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await apiGet('/api/dashboard/stats')
+      setStats(data?.stats || {})
+    } catch (err) {
+      setError(err.message || 'Failed to load dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const cards = Object.entries(stats || {}).filter(([key]) => key !== 'role')
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4 dark:bg-slate-950">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl dark:bg-slate-900">
-        <div className="mb-4 flex justify-center">
-          <HostelLogo size="lg" />
+    <div>
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Welcome back, ${user?.fullName || user?.email || 'User'}.`}
+      />
+
+      {loading && <LoadingBlock />}
+      {error && <ErrorBlock message={error} onRetry={load} />}
+
+      {!loading && !error && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {cards.map(([key, value]) => (
+            <Card key={key}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {LABELS[key] || key}
+              </p>
+              <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                {formatValue(key, value)}
+              </p>
+            </Card>
+          ))}
+          {cards.length === 0 && (
+            <Card>
+              <p className="text-sm text-slate-500">No stats available.</p>
+            </Card>
+          )}
         </div>
-        <h1 className="text-center text-2xl font-bold text-slate-900 dark:text-white">Takshak Hostel</h1>
-        <p className="mt-1 text-center text-sm text-primary dark:text-primary-light">Dashboard</p>
-        <p className="mt-4 text-center text-slate-600 dark:text-slate-300">
-          {guest
-            ? 'Browsing in guest mode — explore the Takshak Hostel portal with limited access.'
-            : `Welcome, ${user?.identifier ?? 'User'}! You are signed in to Takshak Hostel.`}
-        </p>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="mx-auto mt-6 block rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        >
-          Sign out
-        </button>
-      </div>
+      )}
     </div>
   )
 }

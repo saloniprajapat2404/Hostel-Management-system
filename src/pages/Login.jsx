@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import AuthBackground from '../components/AuthBackground'
 import BrandHeader from '../components/BrandHeader'
 import LoginForm from '../components/LoginForm'
@@ -7,12 +8,17 @@ import LanguageSelector from '../components/LanguageSelector'
 import Toast from '../components/ui/Toast'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useToast } from '../hooks/useToast'
+import { isAuthenticated } from '../utils/auth'
 import { t } from '../utils/translations'
 
 export default function Login() {
   const { dark, toggle } = useDarkMode()
   const { toast, showToast, hideToast } = useToast()
   const [lang, setLang] = useState(() => localStorage.getItem('hms_lang') || 'en')
+
+  if (isAuthenticated()) {
+    return <Navigate to="/app" replace />
+  }
 
   const handleLangChange = (value) => {
     setLang(value)

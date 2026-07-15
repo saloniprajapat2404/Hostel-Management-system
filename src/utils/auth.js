@@ -1,5 +1,5 @@
-const DEMO_PASSWORD = 'demo123'
-const AUTH_DELAY_MS = 1500
+const TOKEN_KEY = 'hms_token'
+const USER_KEY = 'hms_user'
 
 export function validateIdentifier(value) {
   const trimmed = value.trim()
@@ -9,52 +9,61 @@ export function validateIdentifier(value) {
   return emailPattern.test(trimmed) || studentIdPattern.test(trimmed)
 }
 
-export async function mockLogin({ identifier, password }) {
-  await new Promise((resolve) => setTimeout(resolve, AUTH_DELAY_MS))
+export async function login({ identifier, password }) {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      identifier: identifier.trim(),
+      password,
+    }),
+  })
 
-  const trimmedId = identifier.trim()
-  const failsDemo =
-    password === 'wrongpass' || trimmedId.toLowerCase() === 'fail@test.com'
-
-  if (
-    !validateIdentifier(trimmedId) ||
-    password.length < 6 ||
-    failsDemo
-  ) {
-    throw new Error('INVALID_CREDENTIALS')
+  if (!res.ok) {
+    let message = 'INVALID_CREDENTIALS'
+    try {
+      const data = await res.json()
+      message = data.message || message
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message)
   }
 
-  return {
-    user: {
-      identifier: trimmedId,
-      role: password === DEMO_PASSWORD ? 'admin' : 'student',
-    },
-  }
+  return res.json()
 }
 
-export function saveSession(user, remember) {
+export function saveSession({ token, user }, remember) {
   const storage = remember ? localStorage : sessionStorage
-  storage.setItem('hms_user', JSON.stringify(user))
+  const other = remember ? sessionStorage : localStorage
+  other.removeItem(TOKEN_KEY)
+  other.removeItem(USER_KEY)
+  storage.setItem(TOKEN_KEY, token)
+  storage.setItem(USER_KEY, JSON.stringify(user))
+}
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
 }
 
 export function getSession() {
-  return (
-    JSON.parse(localStorage.getItem('hms_user') || 'null') ||
-    JSON.parse(sessionStorage.getItem('hms_user') || 'null')
-  )
+  const raw =
+    localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
 }
 
 export function clearSession() {
-  localStorage.removeItem('hms_user')
-  sessionStorage.removeItem('hms_user')
-  localStorage.removeItem('hms_guest')
-  sessionStorage.removeItem('hms_guest')
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
 }
 
-export function setGuestMode() {
-  sessionStorage.setItem('hms_guest', 'true')
-}
-
-export function isGuestMode() {
-  return sessionStorage.getItem('hms_guest') === 'true'
+export function isAuthenticated() {
+  return Boolean(getToken())
 }

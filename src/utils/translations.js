@@ -11,8 +11,6 @@ export const translations = {
     forgotPassword: 'Forgot password?',
     needHelp: 'Need help?',
     roleHint: 'One login for students, wardens, and admins',
-    continueGuest: 'Continue as Guest',
-    or: 'or',
     footer: '© Takshak Hostel',
     privacy: 'Privacy',
     terms: 'Terms',
@@ -30,7 +28,6 @@ export const translations = {
     dashboardTitle: 'Dashboard',
     dashboardWelcome: 'You are signed in to Takshak Hostel.',
     signOut: 'Sign out',
-    guestMode: 'Browsing in guest mode',
   },
   hi: {
     appName: 'Takshak Hostel',
@@ -44,8 +41,6 @@ export const translations = {
     forgotPassword: 'पासवर्ड भूल गए?',
     needHelp: 'मदद चाहिए?',
     roleHint: 'छात्र, वार्डन और एडमिन के लिए एक लॉगिन',
-    continueGuest: 'अतिथि के रूप में जारी रखें',
-    or: 'या',
     footer: '© Takshak Hostel',
     privacy: 'गोपनीयता',
     terms: 'नियम',
@@ -63,7 +58,6 @@ export const translations = {
     dashboardTitle: 'डैशबोर्ड',
     dashboardWelcome: 'आप Takshak Hostel में साइन इन हैं।',
     signOut: 'साइन आउट',
-    guestMode: 'अतिथि मोड में ब्राउज़ कर रहे हैं',
   },
 }
 

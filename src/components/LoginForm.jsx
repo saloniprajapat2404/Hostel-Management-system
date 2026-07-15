@@ -4,19 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import Input from './ui/Input'
 import Button from './ui/Button'
 import Checkbox from './ui/Checkbox'
-import { mockLogin, saveSession, setGuestMode, validateIdentifier } from '../utils/auth'
+import { login, saveSession, validateIdentifier } from '../utils/auth'
 import { t } from '../utils/translations'
 import HostelLogo from './HostelLogo'
-
-function Divider({ label }) {
-  return (
-    <div className="relative flex items-center py-1">
-      <div className="flex-1 border-t border-slate-200 dark:border-slate-700" />
-      <span className="px-3 text-xs font-medium text-slate-400 dark:text-slate-500">{label}</span>
-      <div className="flex-1 border-t border-slate-200 dark:border-slate-700" />
-    </div>
-  )
-}
 
 export default function LoginForm({ lang, onError, onSuccessToast }) {
   const navigate = useNavigate()
@@ -41,22 +31,20 @@ export default function LoginForm({ lang, onError, onSuccessToast }) {
   const onSubmit = async (data) => {
     setLoading(true)
     try {
-      const result = await mockLogin(data)
-      saveSession(result.user, data.remember)
+      const result = await login({
+        identifier: data.identifier,
+        password: data.password,
+      })
+      saveSession({ token: result.token, user: result.user }, data.remember)
       setSuccess(true)
       onSuccessToast(t(lang, 'success'))
-      setTimeout(() => navigate('/dashboard'), 800)
+      setTimeout(() => navigate('/app'), 800)
     } catch {
       triggerShake()
       onError(t(lang, 'invalidCredentials'))
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleGuest = () => {
-    setGuestMode()
-    navigate('/dashboard')
   }
 
   return (
@@ -133,12 +121,6 @@ export default function LoginForm({ lang, onError, onSuccessToast }) {
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">
           {t(lang, 'roleHint')}
         </p>
-
-        <Divider label={t(lang, 'or')} />
-
-        <Button type="button" variant="ghost" onClick={handleGuest}>
-          {t(lang, 'continueGuest')}
-        </Button>
 
         <p className="text-center pt-1">
           <a
