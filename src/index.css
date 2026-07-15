@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #0f766e;
+  --color-primary-dark: #0d5f58;
+  --color-primary-light: #14b8a6;
+  --color-surface: #f8fafc;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    @apply m-0 min-h-screen antialiased;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes success-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.03); }
+}
+
+.animate-float {
+  animation: float 10s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 12s ease-in-out 2s infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-shake {
+  animation: shake 0.45s ease-in-out;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+.animate-success-pulse {
+  animation: success-pulse 0.5s ease-in-out;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake,
+  .animate-fade-in-up,
+  .animate-success-pulse,
+  .animate-gradient,
+  .animate-float,
+  .animate-float-delayed {
+    animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}

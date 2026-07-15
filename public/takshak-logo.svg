@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Takshak Hostel">
+  <defs>
+    <linearGradient id="takshak-bg" x1="12" y1="8" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="takshak-roof" x1="60" y1="24" x2="60" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ccfbf1"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#takshak-bg)"/>
+  <path d="M60 26L92 48V54H28V48L60 26Z" fill="url(#takshak-roof)"/>
+  <rect x="34" y="54" width="52" height="44" rx="4" fill="white" fill-opacity="0.95"/>
+  <rect x="42" y="62" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.85"/>
+  <rect x="55" y="62" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.85"/>
+  <rect x="68" y="62" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.85"/>
+  <rect x="42" y="76" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.65"/>
+  <rect x="55" y="76" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.65"/>
+  <rect x="68" y="76" width="10" height="10" rx="1.5" fill="#0f766e" fill-opacity="0.65"/>
+  <rect x="52" y="86" width="16" height="12" rx="2" fill="#0f766e"/>
+  <text x="60" y="112" text-anchor="middle" fill="white" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="0.4">TAKSHAK</text>
+</svg>
