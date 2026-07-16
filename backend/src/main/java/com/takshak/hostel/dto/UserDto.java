@@ -11,6 +11,12 @@ public record UserDto(
         Role role,
         String studentId,
         String phone,
+        String aadharNumber,
+        String profilePicture,
+        String addressLine,
+        String city,
+        String state,
+        String pincode,
         boolean active,
         Instant createdAt
 ) {
@@ -22,6 +28,12 @@ public record UserDto(
                 user.getRole(),
                 user.getStudentId(),
                 user.getPhone(),
+                user.getAadharNumber(),
+                user.getProfilePicture(),
+                user.getAddressLine(),
+                user.getCity(),
+                user.getState(),
+                user.getPincode(),
                 user.isActive(),
                 user.getCreatedAt()
         );

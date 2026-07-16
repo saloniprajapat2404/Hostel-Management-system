@@ -4,9 +4,12 @@ import com.takshak.hostel.dto.CreateUserRequest;
 import com.takshak.hostel.dto.UpdateProfileRequest;
 import com.takshak.hostel.dto.UpdateUserRequest;
 import com.takshak.hostel.dto.UserDto;
+import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
+import com.takshak.hostel.repository.AllocationRepository;
+import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
 import java.util.List;
@@ -18,10 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AllocationRepository allocationRepository;
+    private final BedRepository bedRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(
+            UserRepository userRepository,
+            AllocationRepository allocationRepository,
+            BedRepository bedRepository,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.allocationRepository = allocationRepository;
+        this.bedRepository = bedRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -32,15 +43,20 @@ public class UserService {
         if (current.getRole() == Role.SUPER_ADMIN) {
             users = roleFilter != null ? userRepository.findByRole(roleFilter) : userRepository.findAll();
         } else if (current.getRole() == Role.ADMIN) {
-            List<Role> allowed = List.of(Role.WARDEN, Role.STUDENT);
+            List<Role> allowed = List.of(Role.ADMIN, Role.WARDEN, Role.STUDENT);
             if (roleFilter != null) {
                 if (!allowed.contains(roleFilter)) {
-                    throw new ApiException("Admin can only list WARDEN or STUDENT", 403);
+                    throw new ApiException("Admin can only list ADMIN, WARDEN or STUDENT", 403);
                 }
                 users = userRepository.findByRole(roleFilter);
             } else {
                 users = userRepository.findByRoleIn(allowed);
             }
+        } else if (current.getRole() == Role.WARDEN) {
+            if (roleFilter != null && roleFilter != Role.STUDENT) {
+                throw new ApiException("Warden can only list STUDENT users", 403);
+            }
+            users = userRepository.findByRole(Role.STUDENT);
         } else {
             throw new ApiException("Access denied", 403);
         }
@@ -53,13 +69,9 @@ public class UserService {
         User current = SecurityUtils.currentUser();
         Role targetRole = request.role();
 
-        if (current.getRole() == Role.SUPER_ADMIN) {
+        if (current.getRole() == Role.SUPER_ADMIN || current.getRole() == Role.ADMIN) {
             if (targetRole != Role.ADMIN && targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
-                throw new ApiException("Super Admin can create ADMIN, WARDEN or STUDENT", 400);
-            }
-        } else if (current.getRole() == Role.ADMIN) {
-            if (targetRole != Role.WARDEN) {
-                throw new ApiException("Admin can only create WARDEN users", 403);
+                throw new ApiException("Can only create ADMIN, WARDEN or STUDENT users", 400);
             }
         } else {
             throw new ApiException("Access denied", 403);
@@ -131,16 +143,50 @@ public class UserService {
         User current = SecurityUtils.currentUser();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("User not found", 404));
+        if (user.getId().equals(current.getId())) {
+            throw new ApiException("You cannot delete your own account", 400);
+        }
         assertCanManage(current, user);
+        releaseActiveAllocation(user);
         user.setActive(false);
         userRepository.save(user);
+    }
+
+    private void releaseActiveAllocation(User user) {
+        allocationRepository.findByStudentAndActiveTrue(user).ifPresent(allocation -> {
+            allocation.setActive(false);
+            Bed bed = allocation.getBed();
+            if (bed != null) {
+                bed.setOccupied(false);
+                bedRepository.save(bed);
+            }
+            allocationRepository.save(allocation);
+        });
     }
 
     @Transactional
     public UserDto updateOwnProfile(UpdateProfileRequest request) {
         User user = SecurityUtils.currentUser();
         user.setFullName(request.fullName().trim());
-        user.setPhone(request.phone());
+        user.setPhone(blankToNull(request.phone()));
+
+        String aadhar = digitsOnly(request.aadharNumber());
+        if (aadhar != null && aadhar.length() != 12) {
+            throw new ApiException("Aadhar number must be 12 digits", 400);
+        }
+        user.setAadharNumber(aadhar);
+
+        user.setProfilePicture(blankToNull(request.profilePicture()));
+        user.setAddressLine(blankToNull(request.addressLine()));
+        user.setCity(blankToNull(request.city()));
+        user.setState(blankToNull(request.state()));
+
+        String pincode = digitsOnly(request.pincode());
+        if (pincode != null && pincode.length() != 6) {
+            throw new ApiException("Pincode must be 6 digits", 400);
+        }
+        user.setPincode(pincode);
+
         return UserDto.from(userRepository.save(user));
     }
 
@@ -154,6 +200,9 @@ public class UserService {
         if (student.getRole() != Role.STUDENT) {
             throw new ApiException("User is not a student", 400);
         }
+        if (!student.isActive()) {
+            throw new ApiException("Student is inactive", 400);
+        }
         return student;
     }
 
@@ -165,8 +214,11 @@ public class UserService {
             return;
         }
         if (actor.getRole() == Role.ADMIN) {
-            if (target.getRole() != Role.WARDEN && target.getRole() != Role.STUDENT) {
-                throw new ApiException("Admin can only manage Wardens and Students", 403);
+            if (target.getRole() == Role.SUPER_ADMIN) {
+                throw new ApiException("Access denied", 403);
+            }
+            if (target.getRole() != Role.ADMIN && target.getRole() != Role.WARDEN && target.getRole() != Role.STUDENT) {
+                throw new ApiException("Access denied", 403);
             }
             return;
         }
@@ -175,5 +227,10 @@ public class UserService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String digitsOnly(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.replaceAll("\\D", "");
     }
 }

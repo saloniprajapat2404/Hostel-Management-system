@@ -10,17 +10,22 @@ export function validateIdentifier(value) {
 }
 
 export async function login({ identifier, password }) {
-  const res = await fetch('/api/auth/login', {
+  let res
+  try {
+    res = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       identifier: identifier.trim(),
       password,
     }),
-  })
+    })
+  } catch {
+    throw new Error('Cannot reach the server. Start the backend on port 8080, then try again.')
+  }
 
   if (!res.ok) {
-    let message = 'INVALID_CREDENTIALS'
+    let message = 'Invalid credentials. Please try again.'
     try {
       const data = await res.json()
       message = data.message || message

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../utils/api'
+import { getSession } from '../utils/auth'
 import {
   ActionButton,
   Card,
@@ -28,6 +29,8 @@ const toneFor = (status) => {
 }
 
 export default function AdmissionsPage() {
+  const session = getSession()
+  const canManage = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -36,6 +39,11 @@ export default function AdmissionsPage() {
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
+    if (!canManage) {
+      setItems([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -45,7 +53,7 @@ export default function AdmissionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canManage])
 
   useEffect(() => {
     load()
@@ -81,13 +89,17 @@ export default function AdmissionsPage() {
       <PageHeader
         title="Admissions"
         subtitle="Review and create hostel admission requests."
-        actions={<ActionButton onClick={() => setShowForm(true)}>Add admission</ActionButton>}
+        actions={
+          canManage ? (
+            <ActionButton onClick={() => setShowForm(true)}>Add admission</ActionButton>
+          ) : null
+        }
       />
 
       {error && <div className="mb-4"><ErrorBlock message={error} onRetry={load} /></div>}
       {loading && <LoadingBlock />}
 
-      {showForm && (
+      {showForm && canManage && (
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">New admission</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
@@ -130,7 +142,7 @@ export default function AdmissionsPage() {
                 {item.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}
               </td>
               <td className="px-4 py-3">
-                {item.status === 'PENDING' ? (
+                {canManage && item.status === 'PENDING' ? (
                   <div className="flex flex-wrap gap-2">
                     <ActionButton variant="success" onClick={() => decide(item.id, 'approve')}>Approve</ActionButton>
                     <ActionButton variant="danger" onClick={() => decide(item.id, 'reject')}>Reject</ActionButton>

@@ -39,9 +39,9 @@ export default function LoginForm({ lang, onError, onSuccessToast }) {
       setSuccess(true)
       onSuccessToast(t(lang, 'success'))
       setTimeout(() => navigate('/app'), 800)
-    } catch {
+    } catch (err) {
       triggerShake()
-      onError(t(lang, 'invalidCredentials'))
+      onError(err.message || t(lang, 'invalidCredentials'))
     } finally {
       setLoading(false)
     }

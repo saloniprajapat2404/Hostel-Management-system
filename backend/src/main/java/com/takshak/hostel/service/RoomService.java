@@ -10,12 +10,16 @@ import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.RoomRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoomService {
+
+    private static final String[] BED_LABELS = {"A", "B", "C", "D", "E", "F", "G", "H"};
 
     private final RoomRepository roomRepository;
 
@@ -43,13 +47,8 @@ public class RoomService {
         room.setActive(true);
 
         List<Bed> beds = new ArrayList<>();
-        String[] labels = {"A", "B", "C", "D"};
-        for (int i = 0; i < room.getCapacity() && i < labels.length; i++) {
-            Bed bed = new Bed();
-            bed.setRoom(room);
-            bed.setBedLabel(labels[i]);
-            bed.setOccupied(false);
-            beds.add(bed);
+        for (int i = 0; i < room.getCapacity(); i++) {
+            beds.add(newBed(room, nextBedLabel(beds, i)));
         }
         room.setBeds(beds);
         return toDto(roomRepository.save(room));
@@ -71,9 +70,12 @@ public class RoomService {
             room.setFloor(request.floor());
         }
         if (request.capacity() != null) {
-            room.setCapacity(request.capacity());
+            syncBedCapacity(room, request.capacity());
         }
         if (request.active() != null) {
+            if (!request.active() && room.getBeds().stream().anyMatch(Bed::isOccupied)) {
+                throw new ApiException("Cannot deactivate room with occupied beds", 409);
+            }
             room.setActive(request.active());
         }
         return toDto(roomRepository.save(room));
@@ -83,8 +85,70 @@ public class RoomService {
     public void deleteRoom(Long id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
+        if (room.getBeds().stream().anyMatch(Bed::isOccupied)) {
+            throw new ApiException("Cannot delete room with occupied beds. Deallocate students first.", 409);
+        }
         room.setActive(false);
         roomRepository.save(room);
+    }
+
+    private void syncBedCapacity(Room room, int newCapacity) {
+        if (newCapacity <= 0) {
+            throw new ApiException("Capacity must be at least 1", 400);
+        }
+
+        List<Bed> beds = room.getBeds();
+        int currentSize = beds.size();
+
+        if (newCapacity < currentSize) {
+            long occupiedCount = beds.stream().filter(Bed::isOccupied).count();
+            if (occupiedCount > newCapacity) {
+                throw new ApiException("Cannot reduce capacity below occupied bed count", 400);
+            }
+            int toRemove = currentSize - newCapacity;
+            List<Bed> vacantBeds = beds.stream()
+                    .filter(b -> !b.isOccupied())
+                    .sorted(Comparator.comparing(Bed::getBedLabel).reversed())
+                    .limit(toRemove)
+                    .toList();
+            if (vacantBeds.size() < toRemove) {
+                throw new ApiException("Cannot reduce capacity — not enough vacant beds to remove", 400);
+            }
+            beds.removeAll(vacantBeds);
+        } else if (newCapacity > currentSize) {
+            for (int i = currentSize; i < newCapacity; i++) {
+                beds.add(newBed(room, nextBedLabel(beds, i)));
+            }
+        }
+        room.setCapacity(newCapacity);
+    }
+
+    private Bed newBed(Room room, String label) {
+        Bed bed = new Bed();
+        bed.setRoom(room);
+        bed.setBedLabel(label);
+        bed.setOccupied(false);
+        return bed;
+    }
+
+    private String nextBedLabel(List<Bed> beds, int index) {
+        Set<String> used = new HashSet<>();
+        for (Bed bed : beds) {
+            used.add(bed.getBedLabel());
+        }
+        if (index < BED_LABELS.length && !used.contains(BED_LABELS[index])) {
+            return BED_LABELS[index];
+        }
+        for (String label : BED_LABELS) {
+            if (!used.contains(label)) {
+                return label;
+            }
+        }
+        int n = beds.size() + 1;
+        while (used.contains(String.valueOf(n))) {
+            n++;
+        }
+        return String.valueOf(n);
     }
 
     public RoomDto toDto(Room room) {

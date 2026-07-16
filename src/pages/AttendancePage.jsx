@@ -16,7 +16,7 @@ import {
 
 export default function AttendancePage() {
   const session = getSession()
-  const canRecord = session?.role === 'WARDEN'
+  const canRecord = session?.role === 'WARDEN' || session?.role === 'ADMIN' || session?.role === 'SUPER_ADMIN'
   const [items, setItems] = useState([])
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)

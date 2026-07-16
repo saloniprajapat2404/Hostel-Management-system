@@ -15,11 +15,16 @@ async function request(method, path, body) {
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
-  const res = await fetch(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res
+  try {
+    res = await fetch(path, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new Error('Cannot reach the server. Make sure the backend is running on port 8080.')
+  }
 
   if (res.status === 401) {
     clearSession()
@@ -30,7 +35,11 @@ async function request(method, path, body) {
   }
 
   if (!res.ok) {
-    throw new Error(await parseError(res))
+    const message = await parseError(res)
+    if (res.status === 403) {
+      throw new Error(`${message} Sign out and sign in again with an Admin account if this persists.`)
+    }
+    throw new Error(message)
   }
 
   if (res.status === 204) return null

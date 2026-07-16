@@ -6,10 +6,13 @@ import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.Complaint;
 import com.takshak.hostel.entity.Notice;
 import com.takshak.hostel.entity.Room;
+import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.entity.SystemSetting;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.AdmissionStatus;
 import com.takshak.hostel.enums.ComplaintStatus;
+import com.takshak.hostel.enums.FeeStatus;
+import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.AllocationRepository;
@@ -17,9 +20,13 @@ import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.ComplaintRepository;
 import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.repository.RoomRepository;
+import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.SystemSettingRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.service.StudentFeeService;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -43,6 +50,8 @@ public class DataSeeder implements CommandLineRunner {
     private final ComplaintRepository complaintRepository;
     private final NoticeRepository noticeRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final StudentFeeRepository studentFeeRepository;
+    private final StudentFeeService studentFeeService;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
@@ -54,6 +63,8 @@ public class DataSeeder implements CommandLineRunner {
             ComplaintRepository complaintRepository,
             NoticeRepository noticeRepository,
             SystemSettingRepository systemSettingRepository,
+            StudentFeeRepository studentFeeRepository,
+            StudentFeeService studentFeeService,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
@@ -63,6 +74,8 @@ public class DataSeeder implements CommandLineRunner {
         this.complaintRepository = complaintRepository;
         this.noticeRepository = noticeRepository;
         this.systemSettingRepository = systemSettingRepository;
+        this.studentFeeRepository = studentFeeRepository;
+        this.studentFeeService = studentFeeService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -70,7 +83,8 @@ public class DataSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (userRepository.count() > 0) {
-            log.info("Database already seeded — skipping DataSeeder");
+            log.info("Database already seeded — running fee/profile backfill");
+            ensureStudentProfilesAndFees();
             return;
         }
 
@@ -192,8 +206,87 @@ public class DataSeeder implements CommandLineRunner {
         systemSettingRepository.save(new SystemSetting("totalRooms", "30"));
         systemSettingRepository.save(new SystemSetting("bedsPerRoom", "2"));
 
+        seedFeesForStudents(students);
+
         log.info("Seed complete: users={}, rooms=30, allocations=15 (admin={}, superAdmin={})",
                 userRepository.count(), admin.getEmail(), superAdmin.getEmail());
+    }
+
+    private void ensureStudentProfilesAndFees() {
+        userRepository.findByEmailIgnoreCase("student01@takshak.edu").ifPresent(student -> {
+            if (student.getAadharNumber() == null) {
+                student.setAadharNumber("2345 6789 0123");
+                student.setAddressLine("Hostel Block A, Room R01");
+                student.setCity("Pune");
+                student.setState("Maharashtra");
+                student.setPincode("411001");
+                userRepository.save(student);
+            }
+        });
+
+        userRepository.findByRole(Role.STUDENT).forEach(student -> {
+            if (studentFeeRepository.findByStudentOrderByDueDateDesc(student).isEmpty()) {
+                seedFeesForStudent(student);
+            } else {
+                ensurePaymentsForStudent(student);
+            }
+        });
+    }
+
+    private void ensurePaymentsForStudent(User student) {
+        User admin = userRepository.findByEmailIgnoreCase("admin@takshak.edu").orElse(student);
+        studentFeeRepository.findByStudentWithPayments(student).forEach(fee -> {
+            if (fee.getPayments().isEmpty() && fee.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+                PaymentMethod method = switch (fee.getFeeType()) {
+                    case "Hostel Fee" -> PaymentMethod.UPI;
+                    case "Mess Fee" -> PaymentMethod.CASH;
+                    default -> PaymentMethod.BANK_TRANSFER;
+                };
+                studentFeeService.seedPayment(fee, fee.getPaidAmount(), method, "Migrated demo payment", admin);
+            }
+        });
+    }
+
+    private void seedFeesForStudents(List<User> students) {
+        students.forEach(this::seedFeesForStudent);
+    }
+
+    private void seedFeesForStudent(User student) {
+        User admin = userRepository.findByEmailIgnoreCase("admin@takshak.edu").orElse(student);
+
+        StudentFee hostel = saveFeeRecord(student, "Hostel Fee", "2025-26", new BigDecimal("45000"),
+                LocalDate.of(2026, 7, 31));
+        studentFeeService.seedPayment(hostel, new BigDecimal("20000"), PaymentMethod.UPI,
+                "UPI ref TXN-HOSTEL-001", admin);
+        studentFeeService.seedPayment(hostel, new BigDecimal("10000"), PaymentMethod.BANK_TRANSFER,
+                "NEFT ref NEFT8821", admin);
+
+        StudentFee mess = saveFeeRecord(student, "Mess Fee", "2025-26", new BigDecimal("18000"),
+                LocalDate.of(2026, 6, 30));
+        studentFeeService.seedPayment(mess, new BigDecimal("18000"), PaymentMethod.CASH,
+                "Paid at accounts office", admin);
+
+        StudentFee deposit = saveFeeRecord(student, "Security Deposit", "2025-26", new BigDecimal("5000"),
+                LocalDate.of(2025, 8, 15));
+        studentFeeService.seedPayment(deposit, new BigDecimal("5000"), PaymentMethod.ONLINE,
+                "Online gateway ORD-9921", admin);
+    }
+
+    private StudentFee saveFeeRecord(
+            User student,
+            String feeType,
+            String academicYear,
+            BigDecimal total,
+            LocalDate dueDate) {
+        StudentFee fee = new StudentFee();
+        fee.setStudent(student);
+        fee.setFeeType(feeType);
+        fee.setAcademicYear(academicYear);
+        fee.setTotalAmount(total);
+        fee.setPaidAmount(BigDecimal.ZERO);
+        fee.setDueDate(dueDate);
+        fee.setStatus(FeeStatus.PENDING);
+        return studentFeeRepository.save(fee);
     }
 
     private User saveUser(

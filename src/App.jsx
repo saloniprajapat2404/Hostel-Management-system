@@ -12,7 +12,9 @@ import ComplaintsPage from './pages/ComplaintsPage'
 import NoticesPage from './pages/NoticesPage'
 import AttendancePage from './pages/AttendancePage'
 import MyRoomPage from './pages/MyRoomPage'
+import MyFeesPage from './pages/MyFeesPage'
 import ProfilePage from './pages/ProfilePage'
+import FeesPage from './pages/FeesPage'
 import SettingsPage from './pages/SettingsPage'
 
 function App() {
@@ -32,7 +34,11 @@ function App() {
           <Route path="complaints" element={<ComplaintsPage />} />
           <Route path="notices" element={<NoticesPage />} />
           <Route path="attendance" element={<AttendancePage />} />
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
+            <Route path="fees" element={<FeesPage />} />
+          </Route>
           <Route path="my-room" element={<MyRoomPage />} />
+          <Route path="my-fees" element={<MyFeesPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

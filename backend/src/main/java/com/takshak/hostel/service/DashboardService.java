@@ -51,6 +51,22 @@ public class DashboardService {
         User current = SecurityUtils.currentUser();
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("role", current.getRole().name());
+
+        if (current.getRole() == Role.STUDENT) {
+            stats.put("hasAllocation", allocationRepository.existsByStudentAndActiveTrue(current));
+            allocationRepository.findByStudentAndActiveTrue(current).ifPresent(allocation -> {
+                stats.put("myRoomNumber", allocation.getBed().getRoom().getRoomNumber());
+                stats.put("myBedLabel", allocation.getBed().getBedLabel());
+                stats.put("myFloor", allocation.getBed().getRoom().getFloor());
+            });
+            stats.put("activeNotices", noticeRepository.findByActiveTrueOrderByCreatedAtDesc().size());
+            stats.put("myOpenComplaints",
+                    complaintRepository.findByStudentOrderByCreatedAtDesc(current).stream()
+                            .filter(c -> c.getStatus() != ComplaintStatus.RESOLVED)
+                            .count());
+            return new DashboardStatsDto(stats);
+        }
+
         stats.put("totalRooms", roomRepository.countByActiveTrue());
         stats.put("totalBeds", bedRepository.count());
         stats.put("occupiedBeds", bedRepository.countByOccupiedTrue());
@@ -64,16 +80,11 @@ public class DashboardService {
             stats.put("admins", userRepository.countByRoleAndActiveTrue(Role.ADMIN));
             stats.put("pendingAdmissions", admissionRequestRepository.countByStatus(AdmissionStatus.PENDING));
             stats.put("openComplaints", complaintRepository.countByStatus(ComplaintStatus.OPEN));
+            stats.put("inProgressComplaints", complaintRepository.countByStatus(ComplaintStatus.IN_PROGRESS));
         } else if (current.getRole() == Role.WARDEN) {
             stats.put("students", userRepository.countByRoleAndActiveTrue(Role.STUDENT));
             stats.put("openComplaints", complaintRepository.countByStatus(ComplaintStatus.OPEN));
             stats.put("inProgressComplaints", complaintRepository.countByStatus(ComplaintStatus.IN_PROGRESS));
-        } else {
-            stats.put("myOpenComplaints",
-                    complaintRepository.findByStudentOrderByCreatedAtDesc(current).stream()
-                            .filter(c -> c.getStatus() != ComplaintStatus.RESOLVED)
-                            .count());
-            stats.put("hasAllocation", allocationRepository.existsByStudentAndActiveTrue(current));
         }
 
         return new DashboardStatsDto(stats);

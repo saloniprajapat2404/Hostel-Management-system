@@ -30,6 +30,7 @@ export default function AllocationsPage() {
   const vacantBeds = useMemo(() => {
     const beds = []
     for (const room of rooms) {
+      if (room.active === false) continue
       for (const bed of room.beds || []) {
         if (!bed.occupied) {
           beds.push({

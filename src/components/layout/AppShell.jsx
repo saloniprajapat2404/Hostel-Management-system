@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import HostelLogo from '../HostelLogo'
 import DarkModeToggle from '../DarkModeToggle'
@@ -13,20 +13,29 @@ const ROLE_NAV = {
     { to: '/app/users?role=STUDENT', label: 'Students' },
     { to: '/app/admissions', label: 'Admissions' },
     { to: '/app/allocations', label: 'Allocations' },
+    { to: '/app/fees', label: 'Fees' },
     { to: '/app/occupancy', label: 'Reports' },
     { to: '/app/notices', label: 'Notices' },
     { to: '/app/settings', label: 'Settings' },
   ],
   ADMIN: [
     { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/users?role=WARDEN', label: 'Wardens' },
+    {
+      label: 'Add User',
+      children: [
+        { to: '/app/users?role=WARDEN', label: 'Wardens' },
+        { to: '/app/users?role=STUDENT', label: 'Students' },
+      ],
+    },
     { to: '/app/rooms', label: 'Rooms' },
-    { to: '/app/users?role=STUDENT', label: 'Students' },
     { to: '/app/admissions', label: 'Admissions' },
     { to: '/app/allocations', label: 'Allocations' },
-    { to: '/app/occupancy', label: 'Occupancy' },
+    { to: '/app/fees', label: 'Fees' },
+    { to: '/app/occupancy', label: 'Reports' },
     { to: '/app/notices', label: 'Notices' },
     { to: '/app/complaints', label: 'Complaints' },
+    { to: '/app/attendance', label: 'Attendance' },
+    { to: '/app/settings', label: 'Settings' },
   ],
   WARDEN: [
     { to: '/app', label: 'Dashboard', end: true },
@@ -40,6 +49,7 @@ const ROLE_NAV = {
   STUDENT: [
     { to: '/app', label: 'Dashboard', end: true },
     { to: '/app/my-room', label: 'My Room' },
+    { to: '/app/my-fees', label: 'Fees' },
     { to: '/app/complaints', label: 'Complaints' },
     { to: '/app/notices', label: 'Notices' },
     { to: '/app/profile', label: 'Profile' },
@@ -58,6 +68,91 @@ function isNavActive(item, pathname, search) {
   if (item.end) return pathname === path
   if (qs) return pathname === path && search.includes(qs)
   return pathname === path || pathname.startsWith(`${path}/`)
+}
+
+function isGroupActive(group, pathname, search) {
+  return group.children.some((child) => isNavActive(child, pathname, search))
+}
+
+function NavLinkItem({ item, pathname, search, onNavigate }) {
+  const active = isNavActive(item, pathname, search)
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={[
+        'block rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+        active
+          ? 'bg-primary text-white shadow-sm shadow-primary/20'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+      ].join(' ')}
+      onClick={onNavigate}
+    >
+      {item.label}
+    </NavLink>
+  )
+}
+
+function NavGroup({ group, pathname, search, onNavigate }) {
+  const groupActive = isGroupActive(group, pathname, search)
+  const [open, setOpen] = useState(groupActive)
+
+  useEffect(() => {
+    if (groupActive) setOpen(true)
+  }, [groupActive])
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        className={[
+          'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+          groupActive
+            ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+        ].join(' ')}
+      >
+        <span>{group.label}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      {open && (
+        <div className="ml-3 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700">
+          {group.children.map((child) => {
+            const active = isNavActive(child, pathname, search)
+            return (
+              <NavLink
+                key={child.to + child.label}
+                to={child.to}
+                className={[
+                  'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+                ].join(' ')}
+                onClick={onNavigate}
+              >
+                {child.label}
+              </NavLink>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AppShell() {
@@ -99,25 +194,25 @@ export default function AppShell() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {items.map((item) => {
-            const active = isNavActive(item, location.pathname, location.search)
-            return (
-              <NavLink
+          {items.map((item) =>
+            item.children ? (
+              <NavGroup
+                key={item.label}
+                group={item}
+                pathname={location.pathname}
+                search={location.search}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            ) : (
+              <NavLinkItem
                 key={item.to + item.label}
-                to={item.to}
-                end={item.end}
-                className={[
-                  'block rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-primary text-white shadow-sm shadow-primary/20'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-                ].join(' ')}
-                onClick={() => setSidebarOpen(false)}
-              >
-                {item.label}
-              </NavLink>
-            )
-          })}
+                item={item}
+                pathname={location.pathname}
+                search={location.search}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            ),
+          )}
         </nav>
 
         <div className="border-t border-slate-200/80 p-3 dark:border-slate-800">

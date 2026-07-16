@@ -24,13 +24,13 @@ public class SettingsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public List<SettingDto> list() {
         return settingsService.list();
     }
 
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public Object upsert(@RequestBody Map<String, Object> body) {
         if (body.containsKey("key") && body.containsKey("value")) {
             return settingsService.upsert(new UpdateSettingRequest(

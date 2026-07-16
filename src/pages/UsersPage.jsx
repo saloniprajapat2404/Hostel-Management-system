@@ -51,33 +51,14 @@ export default function UsersPage() {
     setLoading(true)
     setError('')
     try {
-      if (readOnly) {
-        const allocations = await apiGet('/api/allocations')
-        const map = new Map()
-        for (const a of allocations || []) {
-          if (!map.has(a.studentId)) {
-            map.set(a.studentId, {
-              id: a.studentId,
-              fullName: a.studentName,
-              email: a.studentEmail,
-              studentId: a.studentCode,
-              role: 'STUDENT',
-              active: a.active,
-              phone: null,
-            })
-          }
-        }
-        setUsers([...map.values()])
-      } else {
-        const data = await apiGet(`/api/users?role=${role}`)
-        setUsers(data || [])
-      }
+      const data = await apiGet(`/api/users?role=${role}`)
+      setUsers(data || [])
     } catch (err) {
       setError(err.message || 'Failed to load users')
     } finally {
       setLoading(false)
     }
-  }, [role, readOnly])
+  }, [role])
 
   useEffect(() => {
     load()
@@ -149,6 +130,10 @@ export default function UsersPage() {
 
   const handleDelete = async (id) => {
     if (!canManage || !window.confirm('Delete this user?')) return
+    if (id === session?.id) {
+      setError('You cannot delete your own account')
+      return
+    }
     try {
       await apiDelete(`/api/users/${id}`)
       await load()

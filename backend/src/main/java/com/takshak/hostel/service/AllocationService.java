@@ -51,9 +51,12 @@ public class AllocationService {
     public AllocationDto allocate(CreateAllocationRequest request) {
         User actor = SecurityUtils.currentUser();
         User student = userService.requireStudent(request.studentId());
-        Bed bed = bedRepository.findById(request.bedId())
+        Bed bed = bedRepository.findByIdWithRoom(request.bedId())
                 .orElseThrow(() -> new ApiException("Bed not found", 404));
 
+        if (!bed.getRoom().isActive()) {
+            throw new ApiException("Room is inactive", 400);
+        }
         if (bed.isOccupied() || allocationRepository.findByBedIdAndActiveTrue(bed.getId()).isPresent()) {
             throw new ApiException("Bed is already occupied", 409);
         }

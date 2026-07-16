@@ -29,7 +29,7 @@ public class AttendanceController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('WARDEN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','WARDEN')")
     public AttendanceDto record(@Valid @RequestBody CreateAttendanceRequest request) {
         return attendanceService.record(request);
     }

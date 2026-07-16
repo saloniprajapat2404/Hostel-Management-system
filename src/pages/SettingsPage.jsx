@@ -78,7 +78,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="System configuration (Super Admin)." />
+      <PageHeader title="Settings" subtitle="System configuration." />
 
       {error && <div className="mb-4"><ErrorBlock message={error} onRetry={load} /></div>}
       {success && (

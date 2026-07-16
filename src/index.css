@@ -82,13 +82,84 @@
   animation: gradient-shift 8s ease infinite;
 }
 
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.dashboard-premium {
+  --dash-bg: #0b1220;
+  --dash-surface: #111827;
+  --dash-primary: #3b82f6;
+  --dash-success: #10b981;
+  --dash-warning: #f59e0b;
+  --dash-danger: #ef4444;
+  --dash-accent: #06b6d4;
+  --dash-text: #ffffff;
+  --dash-muted: #94a3b8;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  animation: dashboard-fade-in 0.5s ease-out forwards;
+}
+
+.dashboard-glass {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.92) 0%, rgba(11, 18, 32, 0.88) 100%);
+  backdrop-filter: blur(16px);
+}
+
+.dashboard-icon-btn {
+  @apply relative flex h-10 w-10 items-center justify-center rounded-[14px] border border-white/[0.08] bg-[#111827]/80 text-[#94A3B8] transition-all duration-200 hover:scale-105 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220];
+}
+
+.dashboard-btn-primary {
+  @apply relative overflow-hidden rounded-[14px] bg-gradient-to-r from-[#3B82F6] to-[#2563EB] px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-[#3B82F6]/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#3B82F6]/30 active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220];
+}
+
+.dashboard-btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.dashboard-btn-primary:active::after {
+  opacity: 1;
+}
+
+.dashboard-btn-ghost {
+  @apply inline-flex items-center gap-1.5 rounded-[12px] border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[13px] font-semibold text-[#3B82F6] transition-all duration-200 hover:border-[#3B82F6]/30 hover:bg-[#3B82F6]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6];
+}
+
+.dashboard-error {
+  @apply rounded-[20px] border border-[#EF4444]/30 bg-[#EF4444]/10 p-5;
+}
+
+.dashboard-error-btn {
+  @apply relative mt-4 overflow-hidden rounded-[14px] bg-gradient-to-r from-[#3B82F6] to-[#2563EB] px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-[#3B82F6]/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6];
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-fade-in-up,
   .animate-success-pulse,
   .animate-gradient,
   .animate-float,
-  .animate-float-delayed {
+  .animate-float-delayed,
+  .dashboard-premium {
     animation: none;
   }
 
