@@ -16,7 +16,6 @@ import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.AllocationRepository;
-import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.ComplaintRepository;
 import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.repository.RoomRepository;
@@ -29,12 +28,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -44,7 +43,6 @@ public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final RoomRepository roomRepository;
-    private final BedRepository bedRepository;
     private final AllocationRepository allocationRepository;
     private final AdmissionRequestRepository admissionRequestRepository;
     private final ComplaintRepository complaintRepository;
@@ -57,7 +55,6 @@ public class DataSeeder implements CommandLineRunner {
     public DataSeeder(
             UserRepository userRepository,
             RoomRepository roomRepository,
-            BedRepository bedRepository,
             AllocationRepository allocationRepository,
             AdmissionRequestRepository admissionRequestRepository,
             ComplaintRepository complaintRepository,
@@ -68,7 +65,6 @@ public class DataSeeder implements CommandLineRunner {
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
-        this.bedRepository = bedRepository;
         this.allocationRepository = allocationRepository;
         this.admissionRequestRepository = admissionRequestRepository;
         this.complaintRepository = complaintRepository;
@@ -80,7 +76,6 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     @Override
-    @Transactional
     public void run(String... args) {
         if (userRepository.count() > 0) {
             log.info("Database already seeded — running fee/profile backfill");
@@ -99,17 +94,27 @@ public class DataSeeder implements CommandLineRunner {
         for (int i = 1; i <= 20; i++) {
             String num = String.format("%02d", i);
             String studentId = String.format("STU2024%03d", i);
-            students.add(saveUser(
+            User student = saveUser(
                     "student" + num + "@takshak.edu",
                     encoded,
                     "Student " + num,
                     Role.STUDENT,
                     studentId,
                     "98" + String.format("%08d", 10000000 + i)
-            ));
+            );
+            if (i == 1) {
+                student.setAadharNumber("234567890123");
+                student.setAddressLine("Hostel Block A, Room R01");
+                student.setCity("Pune");
+                student.setState("Maharashtra");
+                student.setPincode("411001");
+                student = userRepository.save(student);
+            }
+            students.add(student);
         }
 
         List<Bed> allBeds = new ArrayList<>();
+        List<Room> rooms = new ArrayList<>();
         for (int i = 1; i <= 30; i++) {
             Room room = new Room();
             room.setRoomNumber(String.format("R%02d", i));
@@ -117,56 +122,61 @@ public class DataSeeder implements CommandLineRunner {
             room.setCapacity(2);
             room.setActive(true);
 
-            Bed bedA = new Bed();
-            bedA.setRoom(room);
-            bedA.setBedLabel("A");
-            bedA.setOccupied(false);
-
-            Bed bedB = new Bed();
-            bedB.setRoom(room);
-            bedB.setBedLabel("B");
-            bedB.setOccupied(false);
-
+            Bed bedA = newBed("A");
+            Bed bedB = newBed("B");
             room.getBeds().add(bedA);
             room.getBeds().add(bedB);
-            roomRepository.save(room);
-            allBeds.add(bedA);
-            allBeds.add(bedB);
+            room = roomRepository.save(room);
+            rooms.add(room);
+            allBeds.add(room.getBeds().get(0));
+            allBeds.add(room.getBeds().get(1));
         }
 
-        // Allocate first 15 students to first 15 beds (R01-A .. R08-A)
+        // Allocate first 15 students to first 15 beds
         for (int i = 0; i < 15; i++) {
+            Room room = rooms.get(i / 2);
             Bed bed = allBeds.get(i);
             bed.setOccupied(true);
-            bedRepository.save(bed);
+            roomRepository.save(room);
 
             Allocation allocation = new Allocation();
-            allocation.setStudent(students.get(i));
-            allocation.setBed(bed);
+            allocation.setStudentId(students.get(i).getId());
+            allocation.setStudentName(students.get(i).getFullName());
+            allocation.setStudentEmail(students.get(i).getEmail());
+            allocation.setStudentCode(students.get(i).getStudentId());
+            allocation.setBedId(bed.getId());
+            allocation.setRoomId(room.getId());
+            allocation.setRoomNumber(room.getRoomNumber());
+            allocation.setBedLabel(bed.getBedLabel());
+            allocation.setFloor(room.getFloor());
             allocation.setAllocatedAt(Instant.now());
             allocation.setActive(true);
-            allocation.setAllocatedBy(admin);
+            allocation.setAllocatedById(admin.getId());
+            allocation.setAllocatedByName(admin.getFullName());
             allocationRepository.save(allocation);
         }
 
         Notice n1 = new Notice();
         n1.setTitle("Welcome to Takshak Hostel");
         n1.setBody("Welcome students! Please follow hostel timings and keep rooms clean.");
-        n1.setCreatedBy(admin);
+        n1.setCreatedById(admin.getId());
+        n1.setCreatedByName(admin.getFullName());
         n1.setActive(true);
         noticeRepository.save(n1);
 
         Notice n2 = new Notice();
         n2.setTitle("Mess Menu Update");
         n2.setBody("New weekly mess menu is available at the notice board and mess counter.");
-        n2.setCreatedBy(warden);
+        n2.setCreatedById(warden.getId());
+        n2.setCreatedByName(warden.getFullName());
         n2.setActive(true);
         noticeRepository.save(n2);
 
         Notice n3 = new Notice();
         n3.setTitle("Maintenance Window");
         n3.setBody("Water supply maintenance on Sunday 10 AM – 1 PM. Kindly store water in advance.");
-        n3.setCreatedBy(admin);
+        n3.setCreatedById(admin.getId());
+        n3.setCreatedByName(admin.getFullName());
         n3.setActive(true);
         noticeRepository.save(n3);
 
@@ -189,14 +199,16 @@ public class DataSeeder implements CommandLineRunner {
         admissionRequestRepository.save(a2);
 
         Complaint c1 = new Complaint();
-        c1.setStudent(students.get(0));
+        c1.setStudentId(students.get(0).getId());
+        c1.setStudentName(students.get(0).getFullName());
         c1.setTitle("Broken fan in room");
         c1.setDescription("Ceiling fan in R01 bed A is making noise and not spinning properly.");
         c1.setStatus(ComplaintStatus.OPEN);
         complaintRepository.save(c1);
 
         Complaint c2 = new Complaint();
-        c2.setStudent(students.get(1));
+        c2.setStudentId(students.get(1).getId());
+        c2.setStudentName(students.get(1).getFullName());
         c2.setTitle("Wi-Fi connectivity issue");
         c2.setDescription("Hostel Wi-Fi drops frequently in the evening on floor 1.");
         c2.setStatus(ComplaintStatus.OPEN);
@@ -215,7 +227,7 @@ public class DataSeeder implements CommandLineRunner {
     private void ensureStudentProfilesAndFees() {
         userRepository.findByEmailIgnoreCase("student01@takshak.edu").ifPresent(student -> {
             if (student.getAadharNumber() == null) {
-                student.setAadharNumber("2345 6789 0123");
+                student.setAadharNumber("234567890123");
                 student.setAddressLine("Hostel Block A, Room R01");
                 student.setCity("Pune");
                 student.setState("Maharashtra");
@@ -225,7 +237,7 @@ public class DataSeeder implements CommandLineRunner {
         });
 
         userRepository.findByRole(Role.STUDENT).forEach(student -> {
-            if (studentFeeRepository.findByStudentOrderByDueDateDesc(student).isEmpty()) {
+            if (studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId()).isEmpty()) {
                 seedFeesForStudent(student);
             } else {
                 ensurePaymentsForStudent(student);
@@ -235,7 +247,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private void ensurePaymentsForStudent(User student) {
         User admin = userRepository.findByEmailIgnoreCase("admin@takshak.edu").orElse(student);
-        studentFeeRepository.findByStudentWithPayments(student).forEach(fee -> {
+        studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId()).forEach(fee -> {
             if (fee.getPayments().isEmpty() && fee.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
                 PaymentMethod method = switch (fee.getFeeType()) {
                     case "Hostel Fee" -> PaymentMethod.UPI;
@@ -279,7 +291,7 @@ public class DataSeeder implements CommandLineRunner {
             BigDecimal total,
             LocalDate dueDate) {
         StudentFee fee = new StudentFee();
-        fee.setStudent(student);
+        fee.setStudentId(student.getId());
         fee.setFeeType(feeType);
         fee.setAcademicYear(academicYear);
         fee.setTotalAmount(total);
@@ -287,6 +299,14 @@ public class DataSeeder implements CommandLineRunner {
         fee.setDueDate(dueDate);
         fee.setStatus(FeeStatus.PENDING);
         return studentFeeRepository.save(fee);
+    }
+
+    private Bed newBed(String label) {
+        Bed bed = new Bed();
+        bed.setId(new ObjectId().toHexString());
+        bed.setBedLabel(label);
+        bed.setOccupied(false);
+        return bed;
     }
 
     private User saveUser(

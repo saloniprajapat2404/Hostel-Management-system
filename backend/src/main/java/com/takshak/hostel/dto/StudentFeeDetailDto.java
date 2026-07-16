@@ -4,10 +4,11 @@ import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.enums.FeeStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 public record StudentFeeDetailDto(
-        Long id,
+        String id,
         String feeType,
         String academicYear,
         BigDecimal totalAmount,
@@ -20,7 +21,8 @@ public record StudentFeeDetailDto(
     public static StudentFeeDetailDto from(StudentFee fee) {
         BigDecimal balance = fee.getTotalAmount().subtract(fee.getPaidAmount());
         List<FeePaymentDto> payments = fee.getPayments().stream()
-                .map(FeePaymentDto::from)
+                .sorted(Comparator.comparing(p -> p.getPaidAt(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(p -> FeePaymentDto.from(p, fee))
                 .toList();
         return new StudentFeeDetailDto(
                 fee.getId(),

@@ -1,57 +1,59 @@
 package com.takshak.hostel.entity;
 
 import com.takshak.hostel.enums.ComplaintStatus;
-import jakarta.persistence.*;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "complaints")
+@Document(collection = "complaints")
 public class Complaint {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "student_id", nullable = false)
-    private User student;
+    private String studentId;
 
-    @Column(nullable = false)
+    private String studentName;
+
     private String title;
 
-    @Column(nullable = false, length = 4000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ComplaintStatus status = ComplaintStatus.OPEN;
 
-    @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     private Instant resolvedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "handled_by_id")
-    private User handledBy;
+    private String handledById;
+
+    private String handledByName;
 
     public Complaint() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public User getStudent() {
-        return student;
+    public String getStudentId() {
+        return studentId;
     }
 
-    public void setStudent(User student) {
-        this.student = student;
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
     }
 
     public String getTitle() {
@@ -94,11 +96,19 @@ public class Complaint {
         this.resolvedAt = resolvedAt;
     }
 
-    public User getHandledBy() {
-        return handledBy;
+    public String getHandledById() {
+        return handledById;
     }
 
-    public void setHandledBy(User handledBy) {
-        this.handledBy = handledBy;
+    public void setHandledById(String handledById) {
+        this.handledById = handledById;
+    }
+
+    public String getHandledByName() {
+        return handledByName;
+    }
+
+    public void setHandledByName(String handledByName) {
+        this.handledByName = handledByName;
     }
 }

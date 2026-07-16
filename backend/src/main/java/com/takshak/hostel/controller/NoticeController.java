@@ -38,7 +38,7 @@ public class NoticeController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable String id) {
         noticeService.delete(id);
     }
 }

@@ -44,7 +44,7 @@ public class AllocationController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public void deallocate(@PathVariable Long id) {
+    public void deallocate(@PathVariable String id) {
         allocationService.deallocate(id);
     }
 }

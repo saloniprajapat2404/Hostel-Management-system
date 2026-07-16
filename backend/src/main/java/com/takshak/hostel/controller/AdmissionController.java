@@ -36,13 +36,13 @@ public class AdmissionController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public AdmissionRequestDto approve(@PathVariable Long id) {
+    public AdmissionRequestDto approve(@PathVariable String id) {
         return admissionService.approve(id);
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public AdmissionRequestDto reject(@PathVariable Long id) {
+    public AdmissionRequestDto reject(@PathVariable String id) {
         return admissionService.reject(id);
     }
 }

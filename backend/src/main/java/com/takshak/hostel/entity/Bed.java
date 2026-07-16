@@ -1,44 +1,27 @@
 package com.takshak.hostel.entity;
 
-import jakarta.persistence.*;
+import org.bson.types.ObjectId;
 
-@Entity
-@Table(name = "beds", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"room_id", "bedLabel"})
-})
+/**
+ * Embedded bed subdocument inside {@link Room}. Has its own String id (ObjectId hex).
+ */
 public class Bed {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id = new ObjectId().toHexString();
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
-    private Room room;
-
-    @Column(nullable = false, length = 1)
     private String bedLabel;
 
-    @Column(nullable = false)
     private boolean occupied = false;
 
     public Bed() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
-    }
-
-    public Room getRoom() {
-        return room;
-    }
-
-    public void setRoom(Room room) {
-        this.room = room;
     }
 
     public String getBedLabel() {

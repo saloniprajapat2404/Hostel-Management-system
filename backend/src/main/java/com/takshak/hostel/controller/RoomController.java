@@ -40,13 +40,13 @@ public class RoomController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public RoomDto update(@PathVariable Long id, @RequestBody UpdateRoomRequest request) {
+    public RoomDto update(@PathVariable String id, @RequestBody UpdateRoomRequest request) {
         return roomService.updateRoom(id, request);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable String id) {
         roomService.deleteRoom(id);
     }
 }

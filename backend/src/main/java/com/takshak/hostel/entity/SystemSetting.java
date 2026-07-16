@@ -1,19 +1,18 @@
 package com.takshak.hostel.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "system_settings")
+@Document(collection = "system_settings")
 public class SystemSetting {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true)
+    @Indexed(unique = true)
     private String settingKey;
 
-    @Column(nullable = false, length = 2000)
     private String settingValue;
 
     public SystemSetting() {
@@ -24,11 +23,11 @@ public class SystemSetting {
         this.settingValue = settingValue;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

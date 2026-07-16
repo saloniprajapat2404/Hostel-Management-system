@@ -13,8 +13,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoomService {
@@ -27,15 +27,12 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<RoomDto> listRooms() {
-        return roomRepository.findAllWithBeds().stream()
-                .sorted(Comparator.comparing(Room::getRoomNumber))
+        return roomRepository.findAllByOrderByRoomNumberAsc().stream()
                 .map(this::toDto)
                 .toList();
     }
 
-    @Transactional
     public RoomDto createRoom(CreateRoomRequest request) {
         if (roomRepository.existsByRoomNumberIgnoreCase(request.roomNumber())) {
             throw new ApiException("Room number already exists", 409);
@@ -48,14 +45,13 @@ public class RoomService {
 
         List<Bed> beds = new ArrayList<>();
         for (int i = 0; i < room.getCapacity(); i++) {
-            beds.add(newBed(room, nextBedLabel(beds, i)));
+            beds.add(newBed(nextBedLabel(beds, i)));
         }
         room.setBeds(beds);
         return toDto(roomRepository.save(room));
     }
 
-    @Transactional
-    public RoomDto updateRoom(Long id, UpdateRoomRequest request) {
+    public RoomDto updateRoom(String id, UpdateRoomRequest request) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
         if (request.roomNumber() != null && !request.roomNumber().isBlank()) {
@@ -81,8 +77,7 @@ public class RoomService {
         return toDto(roomRepository.save(room));
     }
 
-    @Transactional
-    public void deleteRoom(Long id) {
+    public void deleteRoom(String id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
         if (room.getBeds().stream().anyMatch(Bed::isOccupied)) {
@@ -117,15 +112,15 @@ public class RoomService {
             beds.removeAll(vacantBeds);
         } else if (newCapacity > currentSize) {
             for (int i = currentSize; i < newCapacity; i++) {
-                beds.add(newBed(room, nextBedLabel(beds, i)));
+                beds.add(newBed(nextBedLabel(beds, i)));
             }
         }
         room.setCapacity(newCapacity);
     }
 
-    private Bed newBed(Room room, String label) {
+    private Bed newBed(String label) {
         Bed bed = new Bed();
-        bed.setRoom(room);
+        bed.setId(new ObjectId().toHexString());
         bed.setBedLabel(label);
         bed.setOccupied(false);
         return bed;

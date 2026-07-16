@@ -40,14 +40,14 @@ public class FeeController {
 
     @GetMapping("/students/{studentId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public List<StudentFeeDetailDto> studentFees(@PathVariable Long studentId) {
+    public List<StudentFeeDetailDto> studentFees(@PathVariable String studentId) {
         return studentFeeService.studentFees(studentId);
     }
 
     @PostMapping("/students/{studentId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public StudentFeeDetailDto createFee(
-            @PathVariable Long studentId,
+            @PathVariable String studentId,
             @Valid @RequestBody CreateStudentFeeRequest request) {
         return studentFeeService.createFee(studentId, request);
     }
@@ -55,7 +55,7 @@ public class FeeController {
     @PostMapping("/{feeId}/payments")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public StudentFeeDetailDto recordPayment(
-            @PathVariable Long feeId,
+            @PathVariable String feeId,
             @Valid @RequestBody RecordPaymentRequest request) {
         return studentFeeService.recordPayment(feeId, request);
     }

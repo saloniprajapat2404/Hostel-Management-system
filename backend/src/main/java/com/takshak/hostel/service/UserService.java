@@ -4,7 +4,6 @@ import com.takshak.hostel.dto.CreateUserRequest;
 import com.takshak.hostel.dto.UpdateProfileRequest;
 import com.takshak.hostel.dto.UpdateUserRequest;
 import com.takshak.hostel.dto.UserDto;
-import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
@@ -15,7 +14,6 @@ import com.takshak.hostel.security.SecurityUtils;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -64,7 +62,6 @@ public class UserService {
         return users.stream().map(UserDto::from).toList();
     }
 
-    @Transactional
     public UserDto createUser(CreateUserRequest request) {
         User current = SecurityUtils.currentUser();
         Role targetRole = request.role();
@@ -96,8 +93,7 @@ public class UserService {
         return UserDto.from(userRepository.save(user));
     }
 
-    @Transactional
-    public UserDto updateUser(Long id, UpdateUserRequest request) {
+    public UserDto updateUser(String id, UpdateUserRequest request) {
         User current = SecurityUtils.currentUser();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("User not found", 404));
@@ -138,8 +134,7 @@ public class UserService {
         return UserDto.from(userRepository.save(user));
     }
 
-    @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(String id) {
         User current = SecurityUtils.currentUser();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("User not found", 404));
@@ -153,18 +148,15 @@ public class UserService {
     }
 
     private void releaseActiveAllocation(User user) {
-        allocationRepository.findByStudentAndActiveTrue(user).ifPresent(allocation -> {
+        allocationRepository.findByStudentIdAndActiveTrue(user.getId()).ifPresent(allocation -> {
             allocation.setActive(false);
-            Bed bed = allocation.getBed();
-            if (bed != null) {
-                bed.setOccupied(false);
-                bedRepository.save(bed);
+            if (allocation.getBedId() != null) {
+                bedRepository.setOccupied(allocation.getBedId(), false);
             }
             allocationRepository.save(allocation);
         });
     }
 
-    @Transactional
     public UserDto updateOwnProfile(UpdateProfileRequest request) {
         User user = SecurityUtils.currentUser();
         user.setFullName(request.fullName().trim());
@@ -194,7 +186,7 @@ public class UserService {
         return UserDto.from(SecurityUtils.currentUser());
     }
 
-    public User requireStudent(Long studentId) {
+    public User requireStudent(String studentId) {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ApiException("Student not found", 404));
         if (student.getRole() != Role.STUDENT) {

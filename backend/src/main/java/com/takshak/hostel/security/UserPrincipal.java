@@ -20,7 +20,7 @@ public class UserPrincipal implements UserDetails {
         return user;
     }
 
-    public Long getId() {
+    public String getId() {
         return user.getId();
     }
 

@@ -1,40 +1,36 @@
 package com.takshak.hostel.entity;
 
-import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "rooms")
+@Document(collection = "rooms")
 public class Room {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true)
+    @Indexed(unique = true)
     private String roomNumber;
 
-    @Column(nullable = false)
     private int floor;
 
-    @Column(nullable = false)
     private int capacity = 2;
 
-    @Column(nullable = false)
     private boolean active = true;
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Bed> beds = new ArrayList<>();
 
     public Room() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

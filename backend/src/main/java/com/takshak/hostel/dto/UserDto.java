@@ -5,7 +5,7 @@ import com.takshak.hostel.enums.Role;
 import java.time.Instant;
 
 public record UserDto(
-        Long id,
+        String id,
         String email,
         String fullName,
         Role role,

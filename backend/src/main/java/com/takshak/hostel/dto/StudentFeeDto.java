@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record StudentFeeDto(
-        Long id,
+        String id,
         String feeType,
         String academicYear,
         BigDecimal totalAmount,

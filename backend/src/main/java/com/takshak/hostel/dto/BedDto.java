@@ -1,7 +1,7 @@
 package com.takshak.hostel.dto;
 
 public record BedDto(
-        Long id,
+        String id,
         String bedLabel,
         boolean occupied
 ) {

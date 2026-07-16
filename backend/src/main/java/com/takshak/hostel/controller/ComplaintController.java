@@ -40,7 +40,7 @@ public class ComplaintController {
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','WARDEN')")
     public ComplaintDto updateStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody UpdateComplaintStatusRequest request) {
         return complaintService.updateStatus(id, request);
     }

@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdmissionService {
@@ -32,14 +31,12 @@ public class AdmissionService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @Transactional(readOnly = true)
     public List<AdmissionRequestDto> list() {
         return admissionRequestRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toDto)
                 .toList();
     }
 
-    @Transactional
     public AdmissionRequestDto create(CreateAdmissionRequest request) {
         AdmissionRequest entity = new AdmissionRequest();
         entity.setStudentName(request.studentName().trim());
@@ -51,8 +48,7 @@ public class AdmissionService {
         return toDto(admissionRequestRepository.save(entity));
     }
 
-    @Transactional
-    public AdmissionRequestDto approve(Long id) {
+    public AdmissionRequestDto approve(String id) {
         AdmissionRequest request = getPending(id);
         User reviewer = SecurityUtils.currentUser();
 
@@ -79,21 +75,23 @@ public class AdmissionService {
         }
 
         request.setStatus(AdmissionStatus.APPROVED);
-        request.setReviewedBy(reviewer);
+        request.setReviewedById(reviewer.getId());
+        request.setReviewedByName(reviewer.getFullName());
         request.setReviewedAt(Instant.now());
         return toDto(admissionRequestRepository.save(request));
     }
 
-    @Transactional
-    public AdmissionRequestDto reject(Long id) {
+    public AdmissionRequestDto reject(String id) {
         AdmissionRequest request = getPending(id);
+        User reviewer = SecurityUtils.currentUser();
         request.setStatus(AdmissionStatus.REJECTED);
-        request.setReviewedBy(SecurityUtils.currentUser());
+        request.setReviewedById(reviewer.getId());
+        request.setReviewedByName(reviewer.getFullName());
         request.setReviewedAt(Instant.now());
         return toDto(admissionRequestRepository.save(request));
     }
 
-    private AdmissionRequest getPending(Long id) {
+    private AdmissionRequest getPending(String id) {
         AdmissionRequest request = admissionRequestRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Admission request not found", 404));
         if (request.getStatus() != AdmissionStatus.PENDING) {
@@ -103,7 +101,6 @@ public class AdmissionService {
     }
 
     private AdmissionRequestDto toDto(AdmissionRequest a) {
-        User reviewer = a.getReviewedBy();
         return new AdmissionRequestDto(
                 a.getId(),
                 a.getStudentName(),
@@ -113,8 +110,8 @@ public class AdmissionService {
                 a.getStatus(),
                 a.getNotes(),
                 a.getCreatedAt(),
-                reviewer != null ? reviewer.getId() : null,
-                reviewer != null ? reviewer.getFullName() : null,
+                a.getReviewedById(),
+                a.getReviewedByName(),
                 a.getReviewedAt()
         );
     }

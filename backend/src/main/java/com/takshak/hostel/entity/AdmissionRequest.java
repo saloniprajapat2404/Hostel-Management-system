@@ -1,52 +1,44 @@
 package com.takshak.hostel.entity;
 
 import com.takshak.hostel.enums.AdmissionStatus;
-import jakarta.persistence.*;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "admission_requests")
+@Document(collection = "admission_requests")
 public class AdmissionRequest {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false)
     private String studentName;
 
-    @Column(nullable = false)
     private String email;
 
     private String phone;
 
-    @Column(nullable = false)
     private String studentId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private AdmissionStatus status = AdmissionStatus.PENDING;
 
-    @Column(length = 2000)
     private String notes;
 
-    @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by_id")
-    private User reviewedBy;
+    private String reviewedById;
+
+    private String reviewedByName;
 
     private Instant reviewedAt;
 
     public AdmissionRequest() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -106,12 +98,20 @@ public class AdmissionRequest {
         this.createdAt = createdAt;
     }
 
-    public User getReviewedBy() {
-        return reviewedBy;
+    public String getReviewedById() {
+        return reviewedById;
     }
 
-    public void setReviewedBy(User reviewedBy) {
-        this.reviewedBy = reviewedBy;
+    public void setReviewedById(String reviewedById) {
+        this.reviewedById = reviewedById;
+    }
+
+    public String getReviewedByName() {
+        return reviewedByName;
+    }
+
+    public void setReviewedByName(String reviewedByName) {
+        this.reviewedByName = reviewedByName;
     }
 
     public Instant getReviewedAt() {
