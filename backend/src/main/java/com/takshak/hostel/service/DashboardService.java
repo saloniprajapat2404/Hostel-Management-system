@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DashboardService {
@@ -54,22 +53,21 @@ public class DashboardService {
         this.noticeRepository = noticeRepository;
     }
 
-    @Transactional(readOnly = true)
     public DashboardStatsDto stats() {
         User current = SecurityUtils.currentUser();
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("role", current.getRole().name());
 
         if (current.getRole() == Role.STUDENT) {
-            stats.put("hasAllocation", allocationRepository.existsByStudentAndActiveTrue(current));
-            allocationRepository.findByStudentAndActiveTrue(current).ifPresent(allocation -> {
-                stats.put("myRoomNumber", allocation.getBed().getRoom().getRoomNumber());
-                stats.put("myBedLabel", allocation.getBed().getBedLabel());
-                stats.put("myFloor", allocation.getBed().getRoom().getFloor());
+            stats.put("hasAllocation", allocationRepository.existsByStudentIdAndActiveTrue(current.getId()));
+            allocationRepository.findByStudentIdAndActiveTrue(current.getId()).ifPresent(allocation -> {
+                stats.put("myRoomNumber", allocation.getRoomNumber());
+                stats.put("myBedLabel", allocation.getBedLabel());
+                stats.put("myFloor", allocation.getFloor());
             });
             stats.put("activeNotices", noticeRepository.findByActiveTrueOrderByCreatedAtDesc().size());
             stats.put("myOpenComplaints",
-                    complaintRepository.findByStudentOrderByCreatedAtDesc(current).stream()
+                    complaintRepository.findByStudentIdOrderByCreatedAtDesc(current.getId()).stream()
                             .filter(c -> c.getStatus() != ComplaintStatus.RESOLVED)
                             .count());
             return new DashboardStatsDto(stats);

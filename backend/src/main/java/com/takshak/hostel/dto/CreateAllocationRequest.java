@@ -1,9 +1,9 @@
 package com.takshak.hostel.dto;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public record CreateAllocationRequest(
-        @NotNull Long studentId,
-        @NotNull Long bedId
+        @NotBlank String studentId,
+        @NotBlank String bedId
 ) {
 }

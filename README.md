@@ -6,7 +6,25 @@ React frontend for the Takshak Hostel Management System, connected to the Java S
 
 - Node.js 18+
 - Java 17+ and Maven (for the backend)
+- **MongoDB** running locally on `localhost:27017` (database: `takshak_hostel`)
 - Backend running at `http://localhost:8080`
+
+## MongoDB
+
+Start MongoDB before the backend (default install / Docker):
+
+```bash
+# Docker example
+docker run -d --name takshak-mongo -p 27017:27017 mongo:7
+```
+
+The backend connects with:
+
+```
+spring.data.mongodb.uri=mongodb://localhost:27017/takshak_hostel
+```
+
+On first empty database, `DataSeeder` creates demo users, 30 rooms (60 beds), allocations, fees, notices, complaints, and admissions.
 
 ## Run backend
 
@@ -66,6 +84,7 @@ Password for all demo users: **`demo123`**
 - Tailwind CSS v4
 - React Hook Form
 - React Router
+- Spring Boot 3 + Spring Data MongoDB
 
 ## Scripts
 

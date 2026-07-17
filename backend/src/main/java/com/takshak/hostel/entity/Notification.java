@@ -1,57 +1,49 @@
 package com.takshak.hostel.entity;
 
 import com.takshak.hostel.enums.NotificationType;
-import jakarta.persistence.*;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "notifications")
+@Document(collection = "notifications")
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Indexed
+    private String userId;
 
-    @Column(nullable = false)
     private String title;
 
-    @Column(length = 500)
     private String message;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private NotificationType type = NotificationType.SYSTEM;
 
-    @Column(nullable = false, length = 255)
     private String linkPath = "/app";
 
-    @Column(nullable = false)
     private boolean read = false;
 
-    @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     public Notification() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public User getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {

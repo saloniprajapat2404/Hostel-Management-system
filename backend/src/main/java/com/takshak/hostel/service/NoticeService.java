@@ -9,7 +9,6 @@ import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.security.SecurityUtils;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NoticeService {
@@ -20,23 +19,22 @@ public class NoticeService {
         this.noticeRepository = noticeRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<NoticeDto> list() {
-        return noticeRepository.findActiveDetailed().stream().map(this::toDto).toList();
+        return noticeRepository.findByActiveTrueOrderByCreatedAtDesc().stream().map(this::toDto).toList();
     }
 
-    @Transactional
     public NoticeDto create(CreateNoticeRequest request) {
+        User actor = SecurityUtils.currentUser();
         Notice notice = new Notice();
         notice.setTitle(request.title().trim());
         notice.setBody(request.body().trim());
-        notice.setCreatedBy(SecurityUtils.currentUser());
+        notice.setCreatedById(actor.getId());
+        notice.setCreatedByName(actor.getFullName());
         notice.setActive(true);
         return toDto(noticeRepository.save(notice));
     }
 
-    @Transactional
-    public void delete(Long id) {
+    public void delete(String id) {
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Notice not found", 404));
         notice.setActive(false);
@@ -44,13 +42,12 @@ public class NoticeService {
     }
 
     private NoticeDto toDto(Notice n) {
-        User createdBy = n.getCreatedBy();
         return new NoticeDto(
                 n.getId(),
                 n.getTitle(),
                 n.getBody(),
-                createdBy != null ? createdBy.getId() : null,
-                createdBy != null ? createdBy.getFullName() : null,
+                n.getCreatedById(),
+                n.getCreatedByName(),
                 n.getCreatedAt(),
                 n.isActive()
         );

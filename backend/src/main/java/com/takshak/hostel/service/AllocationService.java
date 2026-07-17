@@ -3,7 +3,6 @@ package com.takshak.hostel.service;
 import com.takshak.hostel.dto.AllocationDto;
 import com.takshak.hostel.dto.CreateAllocationRequest;
 import com.takshak.hostel.entity.Allocation;
-import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
@@ -13,7 +12,6 @@ import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AllocationService {
@@ -31,79 +29,83 @@ public class AllocationService {
         this.userService = userService;
     }
 
-    @Transactional(readOnly = true)
     public List<AllocationDto> listAllocations() {
-        return allocationRepository.findAllActiveDetailed().stream().map(this::toDto).toList();
+        return allocationRepository.findByActiveTrueOrderByAllocatedAtDesc().stream()
+                .map(this::toDto)
+                .toList();
     }
 
-    @Transactional(readOnly = true)
     public AllocationDto myAllocation() {
         User student = SecurityUtils.currentUser();
         if (student.getRole() != Role.STUDENT) {
             throw new ApiException("Only students have allocations", 403);
         }
-        return allocationRepository.findByStudentAndActiveTrue(student)
+        return allocationRepository.findByStudentIdAndActiveTrue(student.getId())
                 .map(this::toDto)
                 .orElse(null);
     }
 
-    @Transactional
     public AllocationDto allocate(CreateAllocationRequest request) {
         User actor = SecurityUtils.currentUser();
         User student = userService.requireStudent(request.studentId());
-        Bed bed = bedRepository.findByIdWithRoom(request.bedId())
+        BedRepository.BedWithRoom bedWithRoom = bedRepository.findByIdWithRoom(request.bedId())
                 .orElseThrow(() -> new ApiException("Bed not found", 404));
 
-        if (!bed.getRoom().isActive()) {
+        if (!bedWithRoom.room().isActive()) {
             throw new ApiException("Room is inactive", 400);
         }
-        if (bed.isOccupied() || allocationRepository.findByBedIdAndActiveTrue(bed.getId()).isPresent()) {
+        if (bedWithRoom.bed().isOccupied()
+                || allocationRepository.findByBedIdAndActiveTrue(bedWithRoom.bed().getId()).isPresent()) {
             throw new ApiException("Bed is already occupied", 409);
         }
-        if (allocationRepository.existsByStudentAndActiveTrue(student)) {
+        if (allocationRepository.existsByStudentIdAndActiveTrue(student.getId())) {
             throw new ApiException("Student already has an active allocation", 409);
         }
 
+        bedRepository.saveOccupied(bedWithRoom, true);
+
         Allocation allocation = new Allocation();
-        allocation.setStudent(student);
-        allocation.setBed(bed);
+        allocation.setStudentId(student.getId());
+        allocation.setStudentName(student.getFullName());
+        allocation.setStudentEmail(student.getEmail());
+        allocation.setStudentCode(student.getStudentId());
+        allocation.setBedId(bedWithRoom.bed().getId());
+        allocation.setRoomId(bedWithRoom.room().getId());
+        allocation.setRoomNumber(bedWithRoom.room().getRoomNumber());
+        allocation.setBedLabel(bedWithRoom.bed().getBedLabel());
+        allocation.setFloor(bedWithRoom.room().getFloor());
         allocation.setAllocatedAt(Instant.now());
         allocation.setActive(true);
-        allocation.setAllocatedBy(actor);
-        bed.setOccupied(true);
-        bedRepository.save(bed);
+        allocation.setAllocatedById(actor.getId());
+        allocation.setAllocatedByName(actor.getFullName());
         return toDto(allocationRepository.save(allocation));
     }
 
-    @Transactional
-    public void deallocate(Long id) {
+    public void deallocate(String id) {
         Allocation allocation = allocationRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Allocation not found", 404));
         if (!allocation.isActive()) {
             throw new ApiException("Allocation already inactive", 400);
         }
         allocation.setActive(false);
-        Bed bed = allocation.getBed();
-        bed.setOccupied(false);
-        bedRepository.save(bed);
+        bedRepository.setOccupied(allocation.getBedId(), false);
         allocationRepository.save(allocation);
     }
 
     public AllocationDto toDto(Allocation a) {
-        User allocatedBy = a.getAllocatedBy();
         return new AllocationDto(
                 a.getId(),
-                a.getStudent().getId(),
-                a.getStudent().getFullName(),
-                a.getStudent().getEmail(),
-                a.getStudent().getStudentId(),
-                a.getBed().getId(),
-                a.getBed().getRoom().getRoomNumber(),
-                a.getBed().getBedLabel(),
+                a.getStudentId(),
+                a.getStudentName(),
+                a.getStudentEmail(),
+                a.getStudentCode(),
+                a.getBedId(),
+                a.getRoomNumber(),
+                a.getBedLabel(),
                 a.getAllocatedAt(),
                 a.isActive(),
-                allocatedBy != null ? allocatedBy.getId() : null,
-                allocatedBy != null ? allocatedBy.getFullName() : null
+                a.getAllocatedById(),
+                a.getAllocatedByName()
         );
     }
 }

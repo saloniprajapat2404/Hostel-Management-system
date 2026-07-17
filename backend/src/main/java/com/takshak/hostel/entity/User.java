@@ -1,68 +1,55 @@
 package com.takshak.hostel.entity;
 
 import com.takshak.hostel.enums.Role;
-import jakarta.persistence.*;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true)
+    @Indexed(unique = true)
     private String email;
 
-    @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
     private String fullName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
 
-    @Column(unique = true)
+    @Indexed(unique = true, sparse = true)
     private String studentId;
 
     private String phone;
 
-    @Column(length = 12)
     private String aadharNumber;
 
-    @Lob
-    @Column(columnDefinition = "CLOB")
     private String profilePicture;
 
-    @Column(length = 500)
     private String addressLine;
 
-    @Column(length = 100)
     private String city;
 
-    @Column(length = 100)
     private String state;
 
-    @Column(length = 10)
     private String pincode;
 
-    @Column(nullable = false)
     private boolean active = true;
 
-    @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     public User() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

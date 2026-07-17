@@ -2,7 +2,6 @@ package com.takshak.hostel.service;
 
 import com.takshak.hostel.dto.CreateStudentFeeRequest;
 import com.takshak.hostel.dto.FeeOverviewDto;
-import com.takshak.hostel.dto.FeePaymentDto;
 import com.takshak.hostel.dto.RecordPaymentRequest;
 import com.takshak.hostel.dto.StudentFeeDetailDto;
 import com.takshak.hostel.dto.StudentFeeSummaryDto;
@@ -13,7 +12,6 @@ import com.takshak.hostel.enums.FeeStatus;
 import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
-import com.takshak.hostel.repository.FeePaymentRepository;
 import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
@@ -22,36 +20,30 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudentFeeService {
 
     private final StudentFeeRepository studentFeeRepository;
-    private final FeePaymentRepository feePaymentRepository;
     private final UserRepository userRepository;
 
     public StudentFeeService(
             StudentFeeRepository studentFeeRepository,
-            FeePaymentRepository feePaymentRepository,
             UserRepository userRepository) {
         this.studentFeeRepository = studentFeeRepository;
-        this.feePaymentRepository = feePaymentRepository;
         this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<StudentFeeDetailDto> myFees() {
         User current = SecurityUtils.currentUser();
         if (current.getRole() != Role.STUDENT) {
             throw new ApiException("Only students have fee records", 403);
         }
-        return studentFeeRepository.findByStudentIdWithPayments(current.getId()).stream()
+        return studentFeeRepository.findByStudentIdOrderByDueDateDesc(current.getId()).stream()
                 .map(StudentFeeDetailDto::from)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public FeeOverviewDto overview() {
         assertAdminAccess();
         List<User> students = userRepository.findByRole(Role.STUDENT).stream()
@@ -86,7 +78,6 @@ public class StudentFeeService {
         );
     }
 
-    @Transactional(readOnly = true)
     public List<StudentFeeSummaryDto> studentSummaries() {
         assertAdminAccess();
         return userRepository.findByRole(Role.STUDENT).stream()
@@ -96,22 +87,20 @@ public class StudentFeeService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<StudentFeeDetailDto> studentFees(Long studentId) {
+    public List<StudentFeeDetailDto> studentFees(String studentId) {
         assertAdminAccess();
         User student = requireStudent(studentId);
-        return studentFeeRepository.findByStudentIdWithPayments(student.getId()).stream()
+        return studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId()).stream()
                 .map(StudentFeeDetailDto::from)
                 .toList();
     }
 
-    @Transactional
-    public StudentFeeDetailDto createFee(Long studentId, CreateStudentFeeRequest request) {
+    public StudentFeeDetailDto createFee(String studentId, CreateStudentFeeRequest request) {
         assertAdminAccess();
         User student = requireStudent(studentId);
 
         StudentFee fee = new StudentFee();
-        fee.setStudent(student);
+        fee.setStudentId(student.getId());
         fee.setFeeType(request.feeType().trim());
         fee.setAcademicYear(request.academicYear().trim());
         fee.setTotalAmount(request.totalAmount());
@@ -121,14 +110,11 @@ public class StudentFeeService {
         return StudentFeeDetailDto.from(studentFeeRepository.save(fee));
     }
 
-    @Transactional
-    public StudentFeeDetailDto recordPayment(Long feeId, RecordPaymentRequest request) {
+    public StudentFeeDetailDto recordPayment(String feeId, RecordPaymentRequest request) {
         assertAdminAccess();
         User actor = SecurityUtils.currentUser();
-        StudentFee fee = studentFeeRepository.findByIdWithPayments(feeId);
-        if (fee == null) {
-            throw new ApiException("Fee record not found", 404);
-        }
+        StudentFee fee = studentFeeRepository.findById(feeId)
+                .orElseThrow(() -> new ApiException("Fee record not found", 404));
 
         BigDecimal balance = fee.getTotalAmount().subtract(fee.getPaidAmount());
         if (request.amount().compareTo(balance) > 0) {
@@ -136,21 +122,20 @@ public class StudentFeeService {
         }
 
         FeePayment payment = new FeePayment();
-        payment.setStudentFee(fee);
         payment.setAmount(request.amount());
         payment.setMethod(request.method());
         payment.setReferenceNote(trimToNull(request.referenceNote()));
-        payment.setRecordedBy(actor);
+        payment.setRecordedById(actor.getId());
+        payment.setRecordedByName(actor.getFullName());
         payment.setPaidAt(Instant.now());
         fee.getPayments().add(payment);
-        feePaymentRepository.save(payment);
 
         recalculateFee(fee);
         return StudentFeeDetailDto.from(studentFeeRepository.save(fee));
     }
 
     private StudentFeeSummaryDto buildSummary(User student) {
-        List<StudentFee> fees = studentFeeRepository.findByStudentWithPayments(student);
+        List<StudentFee> fees = studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId());
         BigDecimal totalFees = BigDecimal.ZERO;
         BigDecimal totalPaid = BigDecimal.ZERO;
         PaymentMethod lastMethod = null;
@@ -202,7 +187,7 @@ public class StudentFeeService {
         return FeeStatus.PARTIAL;
     }
 
-    private User requireStudent(Long studentId) {
+    private User requireStudent(String studentId) {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ApiException("Student not found", 404));
         if (student.getRole() != Role.STUDENT) {
@@ -222,20 +207,18 @@ public class StudentFeeService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    @Transactional
     public void seedPayment(StudentFee fee, BigDecimal amount, PaymentMethod method, String note, User recordedBy) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
         FeePayment payment = new FeePayment();
-        payment.setStudentFee(fee);
         payment.setAmount(amount);
         payment.setMethod(method);
         payment.setReferenceNote(note);
-        payment.setRecordedBy(recordedBy);
+        payment.setRecordedById(recordedBy.getId());
+        payment.setRecordedByName(recordedBy.getFullName());
         payment.setPaidAt(Instant.now());
         fee.getPayments().add(payment);
-        feePaymentRepository.save(payment);
         recalculateFee(fee);
         studentFeeRepository.save(fee);
     }

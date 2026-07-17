@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationService {
@@ -25,37 +24,33 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    @Transactional(readOnly = true)
     public NotificationSummaryDto summary() {
         User current = SecurityUtils.currentUser();
-        long unread = notificationRepository.countByUserAndReadFalse(current);
+        long unread = notificationRepository.countByUserIdAndReadFalse(current.getId());
         List<NotificationDto> items = notificationRepository
-                .findByUserOrderByCreatedAtDesc(current, PageRequest.of(0, LIST_LIMIT))
+                .findByUserIdOrderByCreatedAtDesc(current.getId(), PageRequest.of(0, LIST_LIMIT))
                 .stream()
                 .map(NotificationDto::from)
                 .toList();
         return new NotificationSummaryDto(unread, items);
     }
 
-    @Transactional
-    public NotificationDto markRead(Long id) {
+    public NotificationDto markRead(String id) {
         User current = SecurityUtils.currentUser();
-        Notification notification = notificationRepository.findByIdAndUser(id, current)
+        Notification notification = notificationRepository.findByIdAndUserId(id, current.getId())
                 .orElseThrow(() -> new ApiException("Notification not found", 404));
         notification.setRead(true);
         return NotificationDto.from(notificationRepository.save(notification));
     }
 
-    @Transactional
     public void markAllRead() {
         User current = SecurityUtils.currentUser();
-        notificationRepository.findByUserAndReadFalse(current).forEach(notification -> {
+        notificationRepository.findByUserIdAndReadFalse(current.getId()).forEach(notification -> {
             notification.setRead(true);
             notificationRepository.save(notification);
         });
     }
 
-    @Transactional
     public Notification create(
             User user,
             String title,
@@ -64,7 +59,7 @@ public class NotificationService {
             String linkPath,
             Instant createdAt) {
         Notification notification = new Notification();
-        notification.setUser(user);
+        notification.setUserId(user.getId());
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setType(type);

@@ -1,52 +1,65 @@
 package com.takshak.hostel.entity;
 
 import com.takshak.hostel.enums.CheckType;
-import jakarta.persistence.*;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "check_in_outs")
+@Document(collection = "check_in_outs")
 public class CheckInOut {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "student_id", nullable = false)
-    private User student;
+    private String studentId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    private String studentName;
+
+    private String studentCode;
+
     private CheckType type;
 
-    @Column(nullable = false)
     private Instant timestamp = Instant.now();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recorded_by_id")
-    private User recordedBy;
+    private String recordedById;
 
-    @Column(length = 1000)
+    private String recordedByName;
+
     private String notes;
 
     public CheckInOut() {
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public User getStudent() {
-        return student;
+    public String getStudentId() {
+        return studentId;
     }
 
-    public void setStudent(User student) {
-        this.student = student;
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getStudentCode() {
+        return studentCode;
+    }
+
+    public void setStudentCode(String studentCode) {
+        this.studentCode = studentCode;
     }
 
     public CheckType getType() {
@@ -65,12 +78,20 @@ public class CheckInOut {
         this.timestamp = timestamp;
     }
 
-    public User getRecordedBy() {
-        return recordedBy;
+    public String getRecordedById() {
+        return recordedById;
     }
 
-    public void setRecordedBy(User recordedBy) {
-        this.recordedBy = recordedBy;
+    public void setRecordedById(String recordedById) {
+        this.recordedById = recordedById;
+    }
+
+    public String getRecordedByName() {
+        return recordedByName;
+    }
+
+    public void setRecordedByName(String recordedByName) {
+        this.recordedByName = recordedByName;
     }
 
     public String getNotes() {

@@ -6,7 +6,6 @@ import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.RoomRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReportService {
@@ -21,7 +20,6 @@ public class ReportService {
         this.roomService = roomService;
     }
 
-    @Transactional(readOnly = true)
     public OccupancyReportDto occupancy() {
         List<RoomDto> rooms = roomService.listRooms();
         long totalRooms = roomRepository.countByActiveTrue();

@@ -9,7 +9,6 @@ import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AttendanceService {
@@ -22,34 +21,35 @@ public class AttendanceService {
         this.userService = userService;
     }
 
-    @Transactional(readOnly = true)
     public List<AttendanceDto> list() {
-        return checkInOutRepository.findAllDetailed().stream().map(this::toDto).toList();
+        return checkInOutRepository.findAllByOrderByTimestampDesc().stream().map(this::toDto).toList();
     }
 
-    @Transactional
     public AttendanceDto record(CreateAttendanceRequest request) {
         User student = userService.requireStudent(request.studentId());
+        User actor = SecurityUtils.currentUser();
         CheckInOut record = new CheckInOut();
-        record.setStudent(student);
+        record.setStudentId(student.getId());
+        record.setStudentName(student.getFullName());
+        record.setStudentCode(student.getStudentId());
         record.setType(request.type());
         record.setTimestamp(Instant.now());
-        record.setRecordedBy(SecurityUtils.currentUser());
+        record.setRecordedById(actor.getId());
+        record.setRecordedByName(actor.getFullName());
         record.setNotes(request.notes());
         return toDto(checkInOutRepository.save(record));
     }
 
     private AttendanceDto toDto(CheckInOut c) {
-        User recordedBy = c.getRecordedBy();
         return new AttendanceDto(
                 c.getId(),
-                c.getStudent().getId(),
-                c.getStudent().getFullName(),
-                c.getStudent().getStudentId(),
+                c.getStudentId(),
+                c.getStudentName(),
+                c.getStudentCode(),
                 c.getType(),
                 c.getTimestamp(),
-                recordedBy != null ? recordedBy.getId() : null,
-                recordedBy != null ? recordedBy.getFullName() : null,
+                c.getRecordedById(),
+                c.getRecordedByName(),
                 c.getNotes()
         );
     }

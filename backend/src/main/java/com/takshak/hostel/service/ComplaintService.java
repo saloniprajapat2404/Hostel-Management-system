@@ -13,7 +13,6 @@ import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ComplaintService {
@@ -24,37 +23,37 @@ public class ComplaintService {
         this.complaintRepository = complaintRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<ComplaintDto> list() {
         User current = SecurityUtils.currentUser();
         if (current.getRole() == Role.STUDENT) {
-            return complaintRepository.findByStudentOrderByCreatedAtDesc(current).stream()
+            return complaintRepository.findByStudentIdOrderByCreatedAtDesc(current.getId()).stream()
                     .map(this::toDto)
                     .toList();
         }
-        return complaintRepository.findAllDetailed().stream().map(this::toDto).toList();
+        return complaintRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
     }
 
-    @Transactional
     public ComplaintDto create(CreateComplaintRequest request) {
         User student = SecurityUtils.currentUser();
         if (student.getRole() != Role.STUDENT) {
             throw new ApiException("Only students can file complaints", 403);
         }
         Complaint complaint = new Complaint();
-        complaint.setStudent(student);
+        complaint.setStudentId(student.getId());
+        complaint.setStudentName(student.getFullName());
         complaint.setTitle(request.title().trim());
         complaint.setDescription(request.description().trim());
         complaint.setStatus(ComplaintStatus.OPEN);
         return toDto(complaintRepository.save(complaint));
     }
 
-    @Transactional
-    public ComplaintDto updateStatus(Long id, UpdateComplaintStatusRequest request) {
+    public ComplaintDto updateStatus(String id, UpdateComplaintStatusRequest request) {
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Complaint not found", 404));
+        User handler = SecurityUtils.currentUser();
         complaint.setStatus(request.status());
-        complaint.setHandledBy(SecurityUtils.currentUser());
+        complaint.setHandledById(handler.getId());
+        complaint.setHandledByName(handler.getFullName());
         if (request.status() == ComplaintStatus.RESOLVED) {
             complaint.setResolvedAt(Instant.now());
         } else {
@@ -64,18 +63,17 @@ public class ComplaintService {
     }
 
     private ComplaintDto toDto(Complaint c) {
-        User handledBy = c.getHandledBy();
         return new ComplaintDto(
                 c.getId(),
-                c.getStudent().getId(),
-                c.getStudent().getFullName(),
+                c.getStudentId(),
+                c.getStudentName(),
                 c.getTitle(),
                 c.getDescription(),
                 c.getStatus(),
                 c.getCreatedAt(),
                 c.getResolvedAt(),
-                handledBy != null ? handledBy.getId() : null,
-                handledBy != null ? handledBy.getFullName() : null
+                c.getHandledById(),
+                c.getHandledByName()
         );
     }
 }

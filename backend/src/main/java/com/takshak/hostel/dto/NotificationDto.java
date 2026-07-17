@@ -5,7 +5,7 @@ import com.takshak.hostel.enums.NotificationType;
 import java.time.Instant;
 
 public record NotificationDto(
-        Long id,
+        String id,
         String title,
         String message,
         NotificationType type,

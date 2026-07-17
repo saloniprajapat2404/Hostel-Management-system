@@ -27,7 +27,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
-    public NotificationDto markRead(@PathVariable Long id) {
+    public NotificationDto markRead(@PathVariable String id) {
         return notificationService.markRead(id);
     }
 

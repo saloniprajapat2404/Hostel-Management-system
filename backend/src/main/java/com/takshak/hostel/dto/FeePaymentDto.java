@@ -1,13 +1,14 @@
 package com.takshak.hostel.dto;
 
 import com.takshak.hostel.entity.FeePayment;
+import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 public record FeePaymentDto(
-        Long id,
-        Long feeId,
+        String id,
+        String feeId,
         String feeType,
         BigDecimal amount,
         PaymentMethod method,
@@ -15,17 +16,16 @@ public record FeePaymentDto(
         String referenceNote,
         String recordedByName
 ) {
-    public static FeePaymentDto from(FeePayment payment) {
-        String recorder = payment.getRecordedBy() != null ? payment.getRecordedBy().getFullName() : null;
+    public static FeePaymentDto from(FeePayment payment, StudentFee fee) {
         return new FeePaymentDto(
                 payment.getId(),
-                payment.getStudentFee().getId(),
-                payment.getStudentFee().getFeeType(),
+                fee.getId(),
+                fee.getFeeType(),
                 payment.getAmount(),
                 payment.getMethod(),
                 payment.getPaidAt(),
                 payment.getReferenceNote(),
-                recorder
+                payment.getRecordedByName()
         );
     }
 }

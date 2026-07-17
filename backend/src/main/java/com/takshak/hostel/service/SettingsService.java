@@ -8,7 +8,6 @@ import com.takshak.hostel.repository.SystemSettingRepository;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SettingsService {
@@ -39,7 +38,6 @@ public class SettingsService {
                 .orElse(defaultValue);
     }
 
-    @Transactional
     public SettingDto upsert(UpdateSettingRequest request) {
         SystemSetting setting = systemSettingRepository.findBySettingKey(request.key())
                 .orElseGet(() -> new SystemSetting(request.key(), request.value()));
@@ -49,7 +47,6 @@ public class SettingsService {
         return new SettingDto(saved.getSettingKey(), saved.getSettingValue());
     }
 
-    @Transactional
     public List<SettingDto> upsertMap(Map<String, String> values) {
         return values.entrySet().stream()
                 .map(e -> upsert(new UpdateSettingRequest(e.getKey(), e.getValue())))

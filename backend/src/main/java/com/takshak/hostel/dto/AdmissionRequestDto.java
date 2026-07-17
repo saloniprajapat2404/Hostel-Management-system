@@ -4,7 +4,7 @@ import com.takshak.hostel.enums.AdmissionStatus;
 import java.time.Instant;
 
 public record AdmissionRequestDto(
-        Long id,
+        String id,
         String studentName,
         String email,
         String phone,
@@ -12,7 +12,7 @@ public record AdmissionRequestDto(
         AdmissionStatus status,
         String notes,
         Instant createdAt,
-        Long reviewedById,
+        String reviewedById,
         String reviewedByName,
         Instant reviewedAt
 ) {

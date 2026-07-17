@@ -5,7 +5,7 @@ import com.takshak.hostel.enums.PaymentMethod;
 import java.math.BigDecimal;
 
 public record StudentFeeSummaryDto(
-        Long studentId,
+        String studentId,
         String fullName,
         String email,
         String studentCode,
