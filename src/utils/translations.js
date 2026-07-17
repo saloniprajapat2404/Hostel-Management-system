@@ -1,9 +1,9 @@
 export const translations = {
   en: {
-    appName: 'Takshak Hostel',
+    appName: '{{hostelName}}',
     systemName: 'Hostel Management System',
     welcome: 'Sign in',
-    subtitle: 'Enter your credentials to access Takshak Hostel portal',
+    subtitle: 'Enter your credentials to access {{hostelName}} portal',
     identifier: 'Email or Student ID',
     password: 'Password',
     rememberMe: 'Remember me',
@@ -11,7 +11,7 @@ export const translations = {
     forgotPassword: 'Forgot password?',
     needHelp: 'Need help?',
     roleHint: 'One login for students, wardens, and admins',
-    footer: '© Takshak Hostel',
+    footer: '© {{hostelName}}',
     privacy: 'Privacy',
     terms: 'Terms',
     identifierRequired: 'Email or Student ID is required',
@@ -27,14 +27,14 @@ export const translations = {
     darkMode: 'Toggle dark mode',
     language: 'Language',
     dashboardTitle: 'Dashboard',
-    dashboardWelcome: 'You are signed in to Takshak Hostel.',
+    dashboardWelcome: 'You are signed in to {{hostelName}}.',
     signOut: 'Sign out',
   },
   hi: {
-    appName: 'Takshak Hostel',
+    appName: '{{hostelName}}',
     systemName: 'हॉस्टल प्रबंधन प्रणाली',
     welcome: 'साइन इन',
-    subtitle: 'Takshak Hostel पोर्टल तक पहुँचने के लिए अपनी जानकारी दर्ज करें',
+    subtitle: '{{hostelName}} पोर्टल तक पहुँचने के लिए अपनी जानकारी दर्ज करें',
     identifier: 'ईमेल या छात्र आईडी',
     password: 'पासवर्ड',
     rememberMe: 'मुझे याद रखें',
@@ -42,7 +42,7 @@ export const translations = {
     forgotPassword: 'पासवर्ड भूल गए?',
     needHelp: 'मदद चाहिए?',
     roleHint: 'छात्र, वार्डन और एडमिन के लिए एक लॉगिन',
-    footer: '© Takshak Hostel',
+    footer: '© {{hostelName}}',
     privacy: 'गोपनीयता',
     terms: 'नियम',
     identifierRequired: 'ईमेल या छात्र आईडी आवश्यक है',
@@ -58,11 +58,15 @@ export const translations = {
     darkMode: 'डार्क मोड टॉगल करें',
     language: 'भाषा',
     dashboardTitle: 'डैशबोर्ड',
-    dashboardWelcome: 'आप Takshak Hostel में साइन इन हैं।',
+    dashboardWelcome: 'आप {{hostelName}} में साइन इन हैं।',
     signOut: 'साइन आउट',
   },
 }
 
-export function t(lang, key) {
-  return translations[lang]?.[key] ?? translations.en[key] ?? key
+export function t(lang, key, vars = {}) {
+  let text = translations[lang]?.[key] ?? translations.en[key] ?? key
+  for (const [name, value] of Object.entries(vars)) {
+    text = text.replaceAll(`{{${name}}}`, value ?? '')
+  }
+  return text
 }

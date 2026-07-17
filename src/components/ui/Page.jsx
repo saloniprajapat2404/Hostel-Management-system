@@ -1,13 +1,43 @@
-export function PageHeader({ title, subtitle, actions }) {
+import { ArrowLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+export function BackButton({ fallback = '/app', className = '' }) {
+  const navigate = useNavigate()
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate(fallback)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleBack}
+      aria-label="Go back"
+      title="Back"
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 ${className}`}
+    >
+      <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+    </button>
+  )
+}
+
+export function PageHeader({ title, subtitle, actions, showBack = true, backTo = '/app' }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
-        {subtitle && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
-        )}
+      <div className="flex min-w-0 items-start gap-3">
+        {showBack && <BackButton fallback={backTo} className="mt-0.5" />}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
+          {subtitle && (
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+          )}
+        </div>
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap gap-2 sm:ml-auto">{actions}</div>}
     </div>
   )
 }
@@ -120,4 +150,4 @@ export function Field({ label, children }) {
 }
 
 export const fieldClass =
-  'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-primary-light'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-primary-light dark:focus:bg-slate-800 dark:focus:ring-primary-light/15'

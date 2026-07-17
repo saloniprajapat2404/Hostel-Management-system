@@ -16,6 +16,7 @@ import MyFeesPage from './pages/MyFeesPage'
 import ProfilePage from './pages/ProfilePage'
 import FeesPage from './pages/FeesPage'
 import SettingsPage from './pages/SettingsPage'
+import StudentDetailPage from './pages/StudentDetailPage'
 
 function App() {
   return (
@@ -34,6 +35,9 @@ function App() {
           <Route path="complaints" element={<ComplaintsPage />} />
           <Route path="notices" element={<NoticesPage />} />
           <Route path="attendance" element={<AttendancePage />} />
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN', 'WARDEN']} />}>
+            <Route path="students/:studentId" element={<StudentDetailPage />} />
+          </Route>
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
             <Route path="fees" element={<FeesPage />} />
           </Route>

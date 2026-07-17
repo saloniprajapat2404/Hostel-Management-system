@@ -1,5 +1,6 @@
 package com.takshak.hostel.service;
 
+import com.takshak.hostel.dto.PublicConfigDto;
 import com.takshak.hostel.dto.SettingDto;
 import com.takshak.hostel.dto.UpdateSettingRequest;
 import com.takshak.hostel.entity.SystemSetting;
@@ -22,6 +23,20 @@ public class SettingsService {
         return systemSettingRepository.findAll().stream()
                 .map(s -> new SettingDto(s.getSettingKey(), s.getSettingValue()))
                 .toList();
+    }
+
+    public PublicConfigDto getPublicConfig() {
+        return new PublicConfigDto(
+                getValue("hostelName", "Takshak Hostel"),
+                getValue("systemName", "Hostel Management System")
+        );
+    }
+
+    private String getValue(String key, String defaultValue) {
+        return systemSettingRepository.findBySettingKey(key)
+                .map(SystemSetting::getSettingValue)
+                .filter(value -> value != null && !value.isBlank())
+                .orElse(defaultValue);
     }
 
     @Transactional

@@ -16,7 +16,32 @@
   }
 
   body {
-    @apply m-0 min-h-screen antialiased;
+    @apply m-0 min-h-screen antialiased bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    @apply text-slate-900 dark:text-slate-100;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: #0f172a;
+    caret-color: #0f172a;
+    transition: background-color 9999s ease-out 0s;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill,
+  .dark select:-webkit-autofill {
+    -webkit-text-fill-color: #f1f5f9;
+    caret-color: #f1f5f9;
   }
 }
 
@@ -101,26 +126,114 @@
 }
 
 .dashboard-premium {
-  --dash-bg: #0b1220;
-  --dash-surface: #111827;
+  --dash-bg: #f1f5f9;
+  --dash-surface: #ffffff;
+  --dash-surface-muted: #f8fafc;
+  --dash-card-gradient-via: #ffffff;
   --dash-primary: #3b82f6;
   --dash-success: #10b981;
   --dash-warning: #f59e0b;
   --dash-danger: #ef4444;
   --dash-accent: #06b6d4;
-  --dash-text: #ffffff;
-  --dash-muted: #94a3b8;
-  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-text: #0f172a;
+  --dash-text-secondary: #475569;
+  --dash-muted: #64748b;
+  --dash-border: rgba(15, 23, 42, 0.1);
+  --dash-border-subtle: rgba(15, 23, 42, 0.06);
+  --dash-hover: rgba(15, 23, 42, 0.04);
+  --dash-glass-from: rgba(255, 255, 255, 0.96);
+  --dash-glass-to: rgba(248, 250, 252, 0.92);
+  --dash-pattern: rgba(15, 23, 42, 0.04);
+  --dash-shadow: rgba(15, 23, 42, 0.08);
   animation: dashboard-fade-in 0.5s ease-out forwards;
 }
 
+.dark .dashboard-premium {
+  --dash-bg: #0b1220;
+  --dash-surface: #111827;
+  --dash-surface-muted: #0b1220;
+  --dash-card-gradient-via: #111827;
+  --dash-text: #ffffff;
+  --dash-text-secondary: #cbd5e1;
+  --dash-muted: #94a3b8;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-border-subtle: rgba(255, 255, 255, 0.06);
+  --dash-hover: rgba(255, 255, 255, 0.03);
+  --dash-glass-from: rgba(17, 24, 39, 0.92);
+  --dash-glass-to: rgba(11, 18, 32, 0.88);
+  --dash-pattern: rgba(255, 255, 255, 0.06);
+  --dash-shadow: rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-title {
+  font-size: clamp(1.5rem, 2.5vw, 2.125rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.dashboard-section-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.dashboard-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.dashboard-desc {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dashboard-metric {
+  font-size: clamp(1.375rem, 1.8vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.dashboard-section-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dash-text);
+}
+
+.dashboard-surface-card {
+  border-radius: 18px;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+}
+
+.dashboard-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .dashboard-glass {
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.92) 0%, rgba(11, 18, 32, 0.88) 100%);
+  background: linear-gradient(135deg, var(--dash-glass-from) 0%, var(--dash-glass-to) 100%);
   backdrop-filter: blur(16px);
+  border-color: var(--dash-border);
 }
 
 .dashboard-icon-btn {
-  @apply relative flex h-10 w-10 items-center justify-center rounded-[14px] border border-white/[0.08] bg-[#111827]/80 text-[#94A3B8] transition-all duration-200 hover:scale-105 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220];
+  @apply relative flex h-9 w-9 items-center justify-center rounded-[12px] border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/30;
+  border-color: var(--dash-border-subtle);
+  background: var(--dash-surface);
+  color: var(--dash-muted);
+}
+
+.dashboard-icon-btn:hover {
+  border-color: var(--dash-border);
+  background: var(--dash-hover);
+  color: var(--dash-text);
 }
 
 .dashboard-btn-primary {
@@ -141,7 +254,9 @@
 }
 
 .dashboard-btn-ghost {
-  @apply inline-flex items-center gap-1.5 rounded-[12px] border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[13px] font-semibold text-[#3B82F6] transition-all duration-200 hover:border-[#3B82F6]/30 hover:bg-[#3B82F6]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6];
+  @apply inline-flex items-center gap-1.5 rounded-[12px] border px-3 py-2 text-[13px] font-semibold text-[#3B82F6] transition-all duration-200 hover:border-[#3B82F6]/30 hover:bg-[#3B82F6]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6];
+  border-color: var(--dash-border);
+  background: var(--dash-hover);
 }
 
 .dashboard-error {

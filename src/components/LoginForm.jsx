@@ -8,7 +8,7 @@ import { login, saveSession, validateIdentifier } from '../utils/auth'
 import { t } from '../utils/translations'
 import HostelLogo from './HostelLogo'
 
-export default function LoginForm({ lang, onError, onSuccessToast }) {
+export default function LoginForm({ lang, hostelName, onError, onSuccessToast }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -53,16 +53,16 @@ export default function LoginForm({ lang, onError, onSuccessToast }) {
     >
       <div className="mb-8 text-center">
         <div className="mb-4 flex justify-center">
-          <HostelLogo size="lg" className="shadow-lg shadow-primary/25" />
+          <HostelLogo size="lg" className="shadow-lg shadow-primary/25" alt={hostelName} />
         </div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
           {t(lang, 'welcome')}
         </h2>
         <p className="mt-1 text-sm font-semibold text-primary dark:text-primary-light">
-          {t(lang, 'appName')}
+          {hostelName}
         </p>
         <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-          {t(lang, 'subtitle')}
+          {t(lang, 'subtitle', { hostelName })}
         </p>
       </div>
 

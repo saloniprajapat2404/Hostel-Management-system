@@ -23,6 +23,9 @@ import com.takshak.hostel.repository.RoomRepository;
 import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.SystemSettingRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.enums.NotificationType;
+import com.takshak.hostel.repository.NotificationRepository;
+import com.takshak.hostel.service.NotificationService;
 import com.takshak.hostel.service.StudentFeeService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -52,6 +55,8 @@ public class DataSeeder implements CommandLineRunner {
     private final SystemSettingRepository systemSettingRepository;
     private final StudentFeeRepository studentFeeRepository;
     private final StudentFeeService studentFeeService;
+    private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
@@ -65,6 +70,8 @@ public class DataSeeder implements CommandLineRunner {
             SystemSettingRepository systemSettingRepository,
             StudentFeeRepository studentFeeRepository,
             StudentFeeService studentFeeService,
+            NotificationService notificationService,
+            NotificationRepository notificationRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
@@ -76,6 +83,8 @@ public class DataSeeder implements CommandLineRunner {
         this.systemSettingRepository = systemSettingRepository;
         this.studentFeeRepository = studentFeeRepository;
         this.studentFeeService = studentFeeService;
+        this.notificationService = notificationService;
+        this.notificationRepository = notificationRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -84,6 +93,8 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         if (userRepository.count() > 0) {
             log.info("Database already seeded — running fee/profile backfill");
+            ensureDefaultSettings();
+            ensureNotifications();
             ensureStudentProfilesAndFees();
             return;
         }
@@ -203,13 +214,92 @@ public class DataSeeder implements CommandLineRunner {
         complaintRepository.save(c2);
 
         systemSettingRepository.save(new SystemSetting("hostelName", "Takshak Hostel"));
+        systemSettingRepository.save(new SystemSetting("systemName", "Hostel Management System"));
         systemSettingRepository.save(new SystemSetting("totalRooms", "30"));
         systemSettingRepository.save(new SystemSetting("bedsPerRoom", "2"));
 
         seedFeesForStudents(students);
+        seedDemoNotifications(admin, warden, students.get(0));
 
         log.info("Seed complete: users={}, rooms=30, allocations=15 (admin={}, superAdmin={})",
                 userRepository.count(), admin.getEmail(), superAdmin.getEmail());
+    }
+
+    private void ensureDefaultSettings() {
+        ensureSetting("hostelName", "Takshak Hostel");
+        ensureSetting("systemName", "Hostel Management System");
+    }
+
+    private void ensureSetting(String key, String defaultValue) {
+        if (systemSettingRepository.findBySettingKey(key).isEmpty()) {
+            systemSettingRepository.save(new SystemSetting(key, defaultValue));
+        }
+    }
+
+    private void ensureNotifications() {
+        if (notificationRepository.count() > 0) {
+            return;
+        }
+        userRepository.findByEmailIgnoreCase("admin@takshak.edu").ifPresent(admin ->
+                userRepository.findByEmailIgnoreCase("warden@takshak.edu").ifPresent(warden ->
+                        userRepository.findByEmailIgnoreCase("student01@takshak.edu").ifPresent(student ->
+                                seedDemoNotifications(admin, warden, student))));
+    }
+
+    private void seedDemoNotifications(User admin, User warden, User student) {
+        Instant now = Instant.now();
+
+        notificationService.create(
+                admin,
+                "New admission request",
+                "Rahul Sharma submitted an admission request",
+                NotificationType.ADMISSION,
+                "/app/admissions",
+                now.minusSeconds(3600));
+        notificationService.create(
+                admin,
+                "Open complaint",
+                "Broken fan in room — needs attention",
+                NotificationType.COMPLAINT,
+                "/app/complaints",
+                now.minusSeconds(7200));
+        notificationService.create(
+                admin,
+                "Notice published",
+                "Mess Menu Update is now live",
+                NotificationType.NOTICE,
+                "/app/notices",
+                now.minusSeconds(86400));
+
+        notificationService.create(
+                warden,
+                "Complaint assigned",
+                "Wi-Fi connectivity issue reported on floor 1",
+                NotificationType.COMPLAINT,
+                "/app/complaints",
+                now.minusSeconds(5400));
+        notificationService.create(
+                warden,
+                "New notice",
+                "Maintenance Window scheduled for Sunday",
+                NotificationType.NOTICE,
+                "/app/notices",
+                now.minusSeconds(43200));
+
+        notificationService.create(
+                student,
+                "Fee payment received",
+                "₹10,000 hostel fee payment recorded",
+                NotificationType.FEE,
+                "/app/my-fees",
+                now.minusSeconds(10800));
+        notificationService.create(
+                student,
+                "New notice",
+                "Welcome notice — read hostel timings",
+                NotificationType.NOTICE,
+                "/app/notices",
+                now.minusSeconds(172800));
     }
 
     private void ensureStudentProfilesAndFees() {

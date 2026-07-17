@@ -2,20 +2,33 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import HostelLogo from '../HostelLogo'
 import DarkModeToggle from '../DarkModeToggle'
+import NotificationBell from '../notifications/NotificationBell'
 import { useDarkMode } from '../../hooks/useDarkMode'
+import { useHostelConfig } from '../../context/HostelConfigContext'
 import { clearSession, getSession } from '../../utils/auth'
 
 const ROLE_NAV = {
   SUPER_ADMIN: [
     { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/users?role=ADMIN', label: 'Admins' },
-    { to: '/app/rooms', label: 'Rooms' },
-    { to: '/app/users?role=STUDENT', label: 'Students' },
-    { to: '/app/admissions', label: 'Admissions' },
-    { to: '/app/allocations', label: 'Allocations' },
-    { to: '/app/fees', label: 'Fees' },
+    {
+      label: 'Management',
+      children: [
+        { to: '/app/users?role=ADMIN', label: 'Admins' },
+        { to: '/app/users?role=STUDENT', label: 'Students' },
+        { to: '/app/rooms', label: 'Rooms' },
+        { to: '/app/admissions', label: 'Admissions' },
+        { to: '/app/allocations', label: 'Allocations' },
+      ],
+    },
+    {
+      label: 'Finance',
+      children: [{ to: '/app/fees', label: 'Fees' }],
+    },
+    {
+      label: 'Communication',
+      children: [{ to: '/app/notices', label: 'Notices' }],
+    },
     { to: '/app/occupancy', label: 'Reports' },
-    { to: '/app/notices', label: 'Notices' },
     { to: '/app/settings', label: 'Settings' },
   ],
   ADMIN: [
@@ -27,31 +40,64 @@ const ROLE_NAV = {
         { to: '/app/users?role=STUDENT', label: 'Students' },
       ],
     },
-    { to: '/app/rooms', label: 'Rooms' },
-    { to: '/app/admissions', label: 'Admissions' },
-    { to: '/app/allocations', label: 'Allocations' },
-    { to: '/app/fees', label: 'Fees' },
+    {
+      label: 'Management',
+      children: [
+        { to: '/app/rooms', label: 'Rooms' },
+        { to: '/app/admissions', label: 'Admissions' },
+        { to: '/app/allocations', label: 'Allocations' },
+      ],
+    },
+    {
+      label: 'Finance',
+      children: [{ to: '/app/fees', label: 'Fees' }],
+    },
+    {
+      label: 'Communication',
+      children: [
+        { to: '/app/notices', label: 'Notices' },
+        { to: '/app/complaints', label: 'Complaints' },
+      ],
+    },
     { to: '/app/occupancy', label: 'Reports' },
-    { to: '/app/notices', label: 'Notices' },
-    { to: '/app/complaints', label: 'Complaints' },
     { to: '/app/attendance', label: 'Attendance' },
     { to: '/app/settings', label: 'Settings' },
   ],
   WARDEN: [
     { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/rooms', label: 'Rooms' },
-    { to: '/app/occupancy', label: 'Occupancy' },
-    { to: '/app/users?role=STUDENT', label: 'Students' },
-    { to: '/app/complaints', label: 'Complaints' },
+    {
+      label: 'Management',
+      children: [
+        { to: '/app/rooms', label: 'Rooms' },
+        { to: '/app/occupancy', label: 'Occupancy' },
+        { to: '/app/users?role=STUDENT', label: 'Students' },
+      ],
+    },
+    {
+      label: 'Communication',
+      children: [
+        { to: '/app/complaints', label: 'Complaints' },
+        { to: '/app/notices', label: 'Notices' },
+      ],
+    },
     { to: '/app/attendance', label: 'Attendance' },
-    { to: '/app/notices', label: 'Notices' },
   ],
   STUDENT: [
     { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/my-room', label: 'My Room' },
-    { to: '/app/my-fees', label: 'Fees' },
-    { to: '/app/complaints', label: 'Complaints' },
-    { to: '/app/notices', label: 'Notices' },
+    {
+      label: 'My Hostel',
+      children: [
+        { to: '/app/my-room', label: 'My Room' },
+        { to: '/app/my-fees', label: 'Fees' },
+      ],
+    },
+    {
+      label: 'Communication',
+      children: [
+        { to: '/app/complaints', label: 'Complaints' },
+        { to: '/app/notices', label: 'Notices' },
+      ],
+    },
     { to: '/app/profile', label: 'Profile' },
   ],
 }
@@ -130,7 +176,9 @@ function NavGroup({ group, pathname, search, onNavigate }) {
         </svg>
       </button>
       {open && (
-        <div className="ml-3 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700">
+        <div
+          className="ml-3 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700 motion-safe:animate-[fade-in-up_0.2s_ease-out]"
+        >
           {group.children.map((child) => {
             const active = isNavActive(child, pathname, search)
             return (
@@ -160,8 +208,10 @@ export default function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const { dark, toggle } = useDarkMode()
+  const { hostelName, systemName } = useHostelConfig()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const items = useMemo(() => ROLE_NAV[user?.role] || ROLE_NAV.STUDENT, [user?.role])
+  const isDashboard = location.pathname === '/app' || location.pathname === '/app/'
 
   const handleSignOut = () => {
     clearSession()
@@ -186,10 +236,10 @@ export default function AppShell() {
         ].join(' ')}
       >
         <div className="flex items-center gap-3 border-b border-slate-200/80 px-4 py-4 dark:border-slate-800">
-          <HostelLogo size="sm" />
+          <HostelLogo size="sm" alt={hostelName} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-slate-900 dark:text-white">Takshak Hostel</p>
-            <p className="truncate text-xs text-primary dark:text-primary-light">Management System</p>
+            <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{hostelName}</p>
+            <p className="truncate text-xs text-primary dark:text-primary-light">{systemName}</p>
           </div>
         </div>
 
@@ -248,7 +298,10 @@ export default function AppShell() {
               </span>
             </div>
           </div>
-          <DarkModeToggle dark={dark} onToggle={toggle} label="Dark mode" />
+          <div className="flex items-center gap-2">
+            {!isDashboard && <NotificationBell variant="shell" />}
+            <DarkModeToggle dark={dark} onToggle={toggle} label="Dark mode" />
+          </div>
         </header>
 
         <main className="flex-1 p-4 md:p-6">

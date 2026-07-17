@@ -17,4 +17,13 @@ public interface BedRepository extends JpaRepository<Bed, Long> {
 
     @Query("SELECT b FROM Bed b JOIN FETCH b.room WHERE b.id = :id")
     Optional<Bed> findByIdWithRoom(@Param("id") Long id);
+
+    @Query("""
+            SELECT r.floor, COUNT(b), SUM(CASE WHEN b.occupied = true THEN 1 ELSE 0 END)
+            FROM Bed b JOIN b.room r
+            WHERE r.active = true
+            GROUP BY r.floor
+            ORDER BY r.floor
+            """)
+    List<Object[]> countOccupancyByFloor();
 }

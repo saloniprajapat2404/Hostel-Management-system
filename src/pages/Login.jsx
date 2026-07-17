@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import AuthBackground from '../components/AuthBackground'
 import BrandHeader from '../components/BrandHeader'
@@ -6,6 +6,7 @@ import LoginForm from '../components/LoginForm'
 import DarkModeToggle from '../components/DarkModeToggle'
 import LanguageSelector from '../components/LanguageSelector'
 import Toast from '../components/ui/Toast'
+import { useHostelConfig } from '../context/HostelConfigContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useToast } from '../hooks/useToast'
 import { isAuthenticated } from '../utils/auth'
@@ -14,7 +15,12 @@ import { t } from '../utils/translations'
 export default function Login() {
   const { dark, toggle } = useDarkMode()
   const { toast, showToast, hideToast } = useToast()
+  const { hostelName, systemName, refreshConfig } = useHostelConfig()
   const [lang, setLang] = useState(() => localStorage.getItem('hms_lang') || 'en')
+
+  useEffect(() => {
+    refreshConfig()
+  }, [refreshConfig])
 
   if (isAuthenticated()) {
     return <Navigate to="/app" replace />
@@ -35,8 +41,8 @@ export default function Login() {
 
       <header className="relative z-10 flex items-center justify-between px-5 py-5 md:px-10">
         <BrandHeader
-          appName={t(lang, 'appName')}
-          systemName={t(lang, 'systemName')}
+          appName={hostelName}
+          systemName={systemName}
         />
         <div className="flex items-center gap-2">
           <LanguageSelector lang={lang} onChange={handleLangChange} label={t(lang, 'language')} />
@@ -47,12 +53,13 @@ export default function Login() {
       <main className="relative z-10 flex flex-col items-center justify-center px-4 pb-10 md:min-h-[calc(100vh-88px)] md:px-6">
         <LoginForm
           lang={lang}
+          hostelName={hostelName}
           onError={(msg) => showToast(msg, 'error')}
           onSuccessToast={(msg) => showToast(msg, 'success')}
         />
 
         <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400">
-          <p>{t(lang, 'footer')}</p>
+          <p>{t(lang, 'footer', { hostelName })}</p>
           <p className="mt-2 flex items-center justify-center gap-3">
             <a
               href="#privacy"

@@ -8,53 +8,53 @@ const TONE_STYLES = {
     border: 'border-l-[#3B82F6]',
     glow: 'shadow-[#3B82F6]/10',
     icon: 'bg-[#3B82F6]/15 text-[#3B82F6]',
-    value: 'text-white',
-    gradient: 'from-[#3B82F6]/12 via-[#111827] to-[#111827]',
+    value: 'text-[var(--dash-text)]',
+    gradient: 'from-[#3B82F6]/12 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
   teal: {
     border: 'border-l-[#06B6D4]',
     glow: 'shadow-[#06B6D4]/10',
     icon: 'bg-[#06B6D4]/15 text-[#06B6D4]',
     value: 'text-[#06B6D4]',
-    gradient: 'from-[#06B6D4]/12 via-[#111827] to-[#111827]',
+    gradient: 'from-[#06B6D4]/12 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
   green: {
     border: 'border-l-[#10B981]',
     glow: 'shadow-[#10B981]/10',
     icon: 'bg-[#10B981]/15 text-[#10B981]',
     value: 'text-[#10B981]',
-    gradient: 'from-[#10B981]/12 via-[#111827] to-[#111827]',
+    gradient: 'from-[#10B981]/12 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
   amber: {
     border: 'border-l-[#F59E0B]',
     glow: 'shadow-[#F59E0B]/10',
     icon: 'bg-[#F59E0B]/15 text-[#F59E0B]',
     value: 'text-[#F59E0B]',
-    gradient: 'from-[#F59E0B]/12 via-[#111827] to-[#111827]',
+    gradient: 'from-[#F59E0B]/12 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
   red: {
     border: 'border-l-[#EF4444]',
     glow: 'shadow-[#EF4444]/10',
     icon: 'bg-[#EF4444]/15 text-[#EF4444]',
     value: 'text-[#EF4444]',
-    gradient: 'from-[#EF4444]/12 via-[#111827] to-[#111827]',
+    gradient: 'from-[#EF4444]/12 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
   slate: {
     border: 'border-l-[#64748B]',
     glow: 'shadow-[#64748B]/10',
-    icon: 'bg-white/10 text-[#94A3B8]',
-    value: 'text-white',
-    gradient: 'from-white/5 via-[#111827] to-[#111827]',
+    icon: 'bg-slate-500/10 text-[var(--dash-muted)]',
+    value: 'text-[var(--dash-text)]',
+    gradient: 'from-slate-500/5 via-[var(--dash-card-gradient-via)] to-[var(--dash-card-gradient-via)]',
   },
 }
 
 const metaToneClass = {
-  default: 'bg-white/10 text-[#94A3B8]',
+  default: 'bg-slate-500/10 text-[var(--dash-muted)]',
   teal: 'bg-[#06B6D4]/15 text-[#06B6D4]',
   green: 'bg-[#10B981]/15 text-[#10B981]',
   amber: 'bg-[#F59E0B]/15 text-[#F59E0B]',
   red: 'bg-[#EF4444]/15 text-[#EF4444]',
-  slate: 'bg-white/10 text-[#94A3B8]',
+  slate: 'bg-slate-500/10 text-[var(--dash-muted)]',
 }
 
 function CardPattern() {
@@ -63,7 +63,7 @@ function CardPattern() {
       className="pointer-events-none absolute inset-0 opacity-[0.35]"
       aria-hidden="true"
       style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)`,
+        backgroundImage: `radial-gradient(circle at 1px 1px, var(--dash-pattern) 1px, transparent 0)`,
         backgroundSize: '20px 20px',
       }}
     />
@@ -79,7 +79,8 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="dashboard-glass overflow-hidden rounded-[20px] border border-white/[0.08] shadow-xl shadow-black/20"
+      className="dashboard-glass overflow-hidden rounded-[18px] border shadow-lg"
+      style={{ borderColor: 'var(--dash-border)', boxShadow: `0 12px 28px var(--dash-shadow)` }}
     >
       <button
         type="button"
@@ -87,7 +88,7 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
         aria-expanded={open}
         aria-controls={panelId}
         onClick={onToggle}
-        className="group flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-all duration-300 hover:bg-white/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-inset sm:px-5"
+        className="group flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left transition-all duration-300 hover:bg-[var(--dash-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-inset sm:px-5"
       >
         {icon && (
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#3B82F6]/20 to-[#06B6D4]/10 text-[#3B82F6] shadow-md shadow-[#3B82F6]/10 transition-transform duration-300 group-hover:scale-105 [&_svg]:h-4 [&_svg]:w-4">
@@ -95,18 +96,18 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold leading-snug text-white">{title}</span>
+          <span className="block text-[15px] font-semibold leading-snug text-[var(--dash-text)]">{title}</span>
           {subtitle && (
-            <span className="mt-0.5 block text-xs font-medium text-[#94A3B8]">{subtitle}</span>
+            <span className="mt-0.5 block text-xs font-medium text-[var(--dash-muted)]">{subtitle}</span>
           )}
         </span>
         {badge != null && (
-          <span className="hidden shrink-0 rounded-full border border-white/[0.08] bg-white/[0.06] px-2.5 py-0.5 text-xs font-medium text-[#94A3B8] sm:inline-flex">
+          <span className="hidden shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium text-[var(--dash-muted)] sm:inline-flex" style={{ borderColor: 'var(--dash-border)', background: 'var(--dash-hover)' }}>
             {badge}
           </span>
         )}
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[#64748B] transition-transform duration-300 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-[var(--dash-muted)] transition-transform duration-300 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
@@ -118,7 +119,7 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
         className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-white/[0.06] px-5 py-5 sm:px-6 sm:py-6">
+          <div className="border-t px-5 py-5 sm:px-6 sm:py-6" style={{ borderColor: 'var(--dash-border-subtle)' }}>
             {children}
           </div>
         </div>
@@ -135,12 +136,13 @@ export function QuickStatPill({ label, value, tone = 'teal', icon: Icon }) {
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`dashboard-kpi group relative overflow-hidden rounded-[20px] border border-white/[0.08] border-l-4 ${styles.border} bg-gradient-to-br ${styles.gradient} p-5 shadow-lg ${styles.glow} transition-shadow duration-300 hover:shadow-2xl`}
+      className={`dashboard-kpi group relative overflow-hidden rounded-[20px] border border-l-4 ${styles.border} bg-gradient-to-br ${styles.gradient} p-5 shadow-lg ${styles.glow} transition-shadow duration-300 hover:shadow-2xl`}
+      style={{ borderColor: 'var(--dash-border)' }}
     >
       <CardPattern />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-[#94A3B8]">{label}</p>
+          <p className="text-[13px] font-medium text-[var(--dash-muted)]">{label}</p>
           <p className={`mt-2 text-[34px] font-bold leading-none ${styles.value}`}>
             {numericValue != null ? <AnimatedNumber value={numericValue} /> : value}
           </p>
@@ -161,14 +163,14 @@ export function ProgressBar({ value, max, label }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
 
   return (
-    <div className="rounded-[18px] border border-white/[0.08] bg-[#111827]/60 p-5">
+    <div className="rounded-[18px] border p-5" style={{ borderColor: 'var(--dash-border)', background: 'color-mix(in srgb, var(--dash-surface) 70%, transparent)' }}>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[13px] font-medium text-[#94A3B8]">{label}</span>
+        <span className="text-[13px] font-medium text-[var(--dash-muted)]">{label}</span>
         <span className="text-[15px] font-semibold tabular-nums text-[#3B82F6]">
           <AnimatedNumber value={pct} />%
         </span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-2.5 overflow-hidden rounded-full" style={{ background: 'var(--dash-hover)' }}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -181,7 +183,7 @@ export function ProgressBar({ value, max, label }) {
           aria-label={label}
         />
       </div>
-      <p className="mt-3 text-[13px] text-[#64748B]">
+      <p className="mt-3 text-[13px] text-[var(--dash-muted)]">
         <AnimatedNumber value={value} /> of <AnimatedNumber value={max} /> beds occupied
       </p>
     </div>
@@ -195,14 +197,25 @@ export function DashboardSkeleton() {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="h-[120px] animate-pulse rounded-[20px] border border-white/[0.06] bg-[#111827]/80"
+            className="h-[120px] animate-pulse rounded-[20px] border"
+            style={{ borderColor: 'var(--dash-border)', background: 'color-mix(in srgb, var(--dash-surface) 80%, transparent)' }}
+          />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[1, 2].map((i) => (
+          <div
+            key={`chart-${i}`}
+            className="h-[320px] animate-pulse rounded-[20px] border"
+            style={{ borderColor: 'var(--dash-border)', background: 'color-mix(in srgb, var(--dash-surface) 80%, transparent)' }}
           />
         ))}
       </div>
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-[72px] animate-pulse rounded-[20px] border border-white/[0.06] bg-[#111827]/80"
+          className="h-[72px] animate-pulse rounded-[20px] border"
+          style={{ borderColor: 'var(--dash-border)', background: 'color-mix(in srgb, var(--dash-surface) 80%, transparent)' }}
         />
       ))}
     </div>
@@ -216,7 +229,8 @@ export function DetailList({ items, loading, error, emptyLabel = 'No records fou
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-14 animate-pulse rounded-[14px] border border-white/[0.04] bg-white/[0.04]"
+            className="h-14 animate-pulse rounded-[14px] border"
+            style={{ borderColor: 'var(--dash-border-subtle)', background: 'var(--dash-hover)' }}
           />
         ))}
       </div>
@@ -233,7 +247,7 @@ export function DetailList({ items, loading, error, emptyLabel = 'No records fou
 
   if (!items?.length) {
     return (
-      <p className="rounded-[14px] border border-dashed border-white/[0.1] px-4 py-6 text-center text-[13px] text-[#64748B]">
+      <p className="rounded-[14px] border border-dashed px-4 py-6 text-center text-[13px] text-[var(--dash-muted)]" style={{ borderColor: 'var(--dash-border)' }}>
         {emptyLabel}
       </p>
     )
@@ -247,12 +261,13 @@ export function DetailList({ items, loading, error, emptyLabel = 'No records fou
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.03, duration: 0.25 }}
-          className="flex items-start justify-between gap-3 rounded-[14px] border border-white/[0.06] bg-[#0B1220]/50 px-4 py-3 transition-colors duration-200 hover:border-white/[0.12] hover:bg-white/[0.03]"
+          className="flex items-start justify-between gap-3 rounded-[14px] border px-4 py-3 transition-colors duration-200 hover:bg-[var(--dash-hover)]"
+          style={{ borderColor: 'var(--dash-border-subtle)', background: 'color-mix(in srgb, var(--dash-surface-muted) 50%, transparent)' }}
         >
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-white">{item.primary}</p>
+            <p className="truncate text-[15px] font-medium text-[var(--dash-text)]">{item.primary}</p>
             {item.secondary && (
-              <p className="mt-0.5 truncate text-[13px] text-[#64748B]">{item.secondary}</p>
+              <p className="mt-0.5 truncate text-[13px] text-[var(--dash-muted)]">{item.secondary}</p>
             )}
           </div>
           {item.meta && (
@@ -285,7 +300,8 @@ export function StatDetailToggle({
 
   return (
     <div
-      className={`dashboard-stat-card group relative overflow-hidden rounded-[18px] border border-white/[0.08] border-l-4 ${styles.border} bg-gradient-to-br ${styles.gradient} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${styles.glow}`}
+      className={`dashboard-stat-card group relative overflow-hidden rounded-[18px] border border-l-4 ${styles.border} bg-gradient-to-br ${styles.gradient} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${styles.glow}`}
+      style={{ borderColor: 'var(--dash-border)' }}
     >
       <CardPattern />
       <div className="relative flex items-center gap-3 px-4 py-4 sm:px-5">
@@ -297,8 +313,8 @@ export function StatDetailToggle({
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-[#94A3B8]">{label}</p>
-          {hint && <p className="mt-0.5 text-[13px] text-[#64748B]">{hint}</p>}
+          <p className="text-[13px] font-medium text-[var(--dash-muted)]">{label}</p>
+          {hint && <p className="mt-0.5 text-[13px] text-[var(--dash-muted)]">{hint}</p>}
         </div>
         <p className={`text-[34px] font-bold leading-none ${styles.value}`}>
           {numericValue != null ? <AnimatedNumber value={numericValue} /> : value}
@@ -323,9 +339,9 @@ export function StatDetailToggle({
           className={`relative grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${listOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
         >
           <div className="overflow-hidden">
-            <div className="border-t border-white/[0.06] px-4 pb-4 pt-3 sm:px-5">
+            <div className="border-t px-4 pb-4 pt-3 sm:px-5" style={{ borderColor: 'var(--dash-border-subtle)' }}>
               {listLabel && (
-                <p className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[#64748B]">
+                <p className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[var(--dash-muted)]">
                   {listLabel}
                 </p>
               )}
