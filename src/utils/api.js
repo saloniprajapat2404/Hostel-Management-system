@@ -1,4 +1,5 @@
 import { clearSession, getToken } from './auth'
+import { apiUrl } from './apiBase'
 
 async function parseError(res) {
   try {
@@ -17,13 +18,13 @@ async function request(method, path, body) {
 
   let res
   try {
-    res = await fetch(path, {
+    res = await fetch(apiUrl(path), {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new Error('Cannot reach the server. Make sure the backend is running on port 8080.')
+    throw new Error('Cannot reach the server. Make sure the backend API is running and reachable.')
   }
 
   if (res.status === 401) {

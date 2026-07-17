@@ -226,7 +226,7 @@ export default function Dashboard() {
         <div className="dashboard-stack">
           <DashboardHero user={user} />
 
-          <CompactKpiGrid pills={kpis} admissionTrend={stats.admissionTrend} />
+          <CompactKpiGrid pills={kpis} />
 
           <QuickActionsBar role={role} />
 

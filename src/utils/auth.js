@@ -1,3 +1,5 @@
+import { apiUrl } from './apiBase'
+
 const TOKEN_KEY = 'hms_token'
 const USER_KEY = 'hms_user'
 
@@ -12,16 +14,16 @@ export function validateIdentifier(value) {
 export async function login({ identifier, password }) {
   let res
   try {
-    res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identifier: identifier.trim(),
-      password,
-    }),
+    res = await fetch(apiUrl('/api/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        identifier: identifier.trim(),
+        password,
+      }),
     })
   } catch {
-    throw new Error('Cannot reach the server. Start the backend on port 8080, then try again.')
+    throw new Error('Cannot reach the server. Make sure the backend API is running and reachable.')
   }
 
   if (!res.ok) {

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { getToken } from '../utils/auth'
+import { apiUrl } from '../utils/apiBase'
 
 export const DEFAULT_HOSTEL_NAME = 'Takshak Hostel'
 export const DEFAULT_SYSTEM_NAME = 'Hostel Management System'
@@ -50,14 +50,8 @@ function normalizeConfig(data = {}) {
   }
 }
 
-function settingsListToMap(settings) {
-  const map = {}
-  for (const item of settings || []) map[item.key] = item.value
-  return map
-}
-
 export async function fetchPublicBranding() {
-  const res = await fetch('/api/config/public', { cache: 'no-store' })
+  const res = await fetch(apiUrl('/api/config/public'), { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load public branding')
   return normalizeConfig(await res.json())
 }
@@ -80,24 +74,8 @@ export function HostelConfigProvider({ children }) {
   const refreshConfig = useCallback(async () => {
     try {
       applyConfig(await fetchPublicBranding())
-      return
     } catch {
-      /* fall through */
-    }
-
-    try {
-      const token = getToken()
-      if (!token) return
-
-      const res = await fetch('/api/settings', {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      })
-      if (!res.ok) return
-
-      applyConfig(settingsListToMap(await res.json()))
-    } catch {
-      /* keep current values */
+      /* keep current / defaults when API is unreachable */
     }
   }, [applyConfig])
 

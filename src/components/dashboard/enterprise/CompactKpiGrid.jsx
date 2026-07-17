@@ -9,7 +9,7 @@ const TONE = {
   default: { icon: 'text-[#3B82F6] bg-[#3B82F6]/10' },
 }
 
-function KpiCard({ label, value, tone = 'default', icon: Icon, trend }) {
+function KpiCard({ label, value, tone = 'default', icon: Icon }) {
   const styles = TONE[tone] || TONE.default
   const numeric = typeof value === 'number'
 
@@ -21,7 +21,6 @@ function KpiCard({ label, value, tone = 'default', icon: Icon, trend }) {
           <p className="dashboard-metric mt-1.5 tabular-nums text-[var(--dash-text)]">
             {numeric ? <AnimatedNumber value={value} /> : value}
           </p>
-          {trend && <p className="mt-1 text-[11px] text-[var(--dash-muted)]">{trend}</p>}
         </div>
         {Icon && (
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${styles.icon}`}>
@@ -33,25 +32,14 @@ function KpiCard({ label, value, tone = 'default', icon: Icon, trend }) {
   )
 }
 
-export default function CompactKpiGrid({ pills, admissionTrend }) {
+export default function CompactKpiGrid({ pills }) {
   if (!pills?.length) return null
-
-  const trendText =
-    admissionTrend?.length >= 2
-      ? `↑ +${Math.max(0, admissionTrend[admissionTrend.length - 1].count - admissionTrend[admissionTrend.length - 2].count)} this month`
-      : null
 
   return (
     <section>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
         {pills.slice(0, 4).map((pill) => (
-          <KpiCard
-            key={pill.label}
-            {...pill}
-            trend={
-              pill.label.toLowerCase().includes('student') && trendText ? trendText : pill.trend
-            }
-          />
+          <KpiCard key={pill.label} {...pill} />
         ))}
       </div>
     </section>

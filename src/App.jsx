@@ -16,7 +16,6 @@ import MyRoomPage from './pages/MyRoomPage'
 import MyFeesPage from './pages/MyFeesPage'
 import ProfilePage from './pages/ProfilePage'
 import FeesPage from './pages/FeesPage'
-import SettingsPage from './pages/SettingsPage'
 import StudentDetailPage from './pages/StudentDetailPage'
 
 function App() {
@@ -48,7 +47,6 @@ function App() {
           <Route path="my-room" element={<MyRoomPage />} />
           <Route path="my-fees" element={<MyFeesPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
 
