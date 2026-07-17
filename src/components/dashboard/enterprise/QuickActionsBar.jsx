@@ -15,7 +15,7 @@ const ACTIONS = {
     icon: Building2,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'],
   },
-  addStudent: { label: 'Add Student', to: '/app/users?role=STUDENT', icon: UserPlus, roles: ['ADMIN', 'SUPER_ADMIN'] },
+  addStudent: { label: 'Add User', to: '/app/add-user', icon: UserPlus, roles: ['ADMIN', 'SUPER_ADMIN'] },
   allocateRoom: { label: 'Allocate Room', to: '/app/allocations', icon: BedDouble, roles: ['ADMIN', 'SUPER_ADMIN'] },
   collectFee: { label: 'Collect Fee', to: '/app/fees', icon: IndianRupee, roles: ['ADMIN', 'SUPER_ADMIN'] },
   myFees: { label: 'My Fees', to: '/app/my-fees', icon: IndianRupee, roles: ['STUDENT'] },

@@ -33,13 +33,7 @@ const ROLE_NAV = {
   ],
   ADMIN: [
     { to: '/app', label: 'Dashboard', end: true },
-    {
-      label: 'Add User',
-      children: [
-        { to: '/app/users?role=WARDEN', label: 'Wardens' },
-        { to: '/app/users?role=STUDENT', label: 'Students' },
-      ],
-    },
+    { to: '/app/add-user', label: 'Add User' },
     {
       label: 'Management',
       children: [

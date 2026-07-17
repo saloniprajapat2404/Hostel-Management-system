@@ -3,6 +3,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import AddUserPage from './pages/AddUserPage'
 import UsersPage from './pages/UsersPage'
 import RoomsPage from './pages/RoomsPage'
 import AdmissionsPage from './pages/AdmissionsPage'
@@ -27,6 +28,9 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/app" element={<AppShell />}>
           <Route index element={<Dashboard />} />
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
+            <Route path="add-user" element={<AddUserPage />} />
+          </Route>
           <Route path="users" element={<UsersPage />} />
           <Route path="rooms" element={<RoomsPage />} />
           <Route path="admissions" element={<AdmissionsPage />} />
