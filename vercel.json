@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://thinkpad-dialogue-beer-urls.trycloudflare.com/api/:path*"
+      "destination": "https://api-production-527e.up.railway.app/api/:path*"
     },
     {
       "source": "/(.*)",
