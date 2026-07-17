@@ -29,7 +29,6 @@ const ROLE_NAV = {
       children: [{ to: '/app/notices', label: 'Notices' }],
     },
     { to: '/app/occupancy', label: 'Reports' },
-    { to: '/app/settings', label: 'Settings' },
   ],
   ADMIN: [
     { to: '/app', label: 'Dashboard', end: true },
@@ -55,7 +54,6 @@ const ROLE_NAV = {
     },
     { to: '/app/occupancy', label: 'Reports' },
     { to: '/app/attendance', label: 'Attendance' },
-    { to: '/app/settings', label: 'Settings' },
   ],
   WARDEN: [
     { to: '/app', label: 'Dashboard', end: true },
