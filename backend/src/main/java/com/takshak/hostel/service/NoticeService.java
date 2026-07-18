@@ -4,8 +4,11 @@ import com.takshak.hostel.dto.CreateNoticeRequest;
 import com.takshak.hostel.dto.NoticeDto;
 import com.takshak.hostel.entity.Notice;
 import com.takshak.hostel.entity.User;
+import com.takshak.hostel.enums.NotificationType;
+import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.NoticeRepository;
+import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -14,9 +17,16 @@ import org.springframework.stereotype.Service;
 public class NoticeService {
 
     private final NoticeRepository noticeRepository;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
-    public NoticeService(NoticeRepository noticeRepository) {
+    public NoticeService(
+            NoticeRepository noticeRepository,
+            NotificationService notificationService,
+            UserRepository userRepository) {
         this.noticeRepository = noticeRepository;
+        this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     public List<NoticeDto> list() {
@@ -31,7 +41,16 @@ public class NoticeService {
         notice.setCreatedById(actor.getId());
         notice.setCreatedByName(actor.getFullName());
         notice.setActive(true);
-        return toDto(noticeRepository.save(notice));
+        Notice saved = noticeRepository.save(notice);
+        userRepository.findByRoleIn(List.of(Role.STUDENT, Role.WARDEN)).stream()
+                .filter(User::isActive)
+                .forEach(user -> notificationService.notifyUser(
+                        user,
+                        "New notice",
+                        saved.getTitle(),
+                        NotificationType.NOTICE,
+                        "/app/notices"));
+        return toDto(saved);
     }
 
     public void delete(String id) {

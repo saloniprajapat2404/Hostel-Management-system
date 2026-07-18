@@ -2,17 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 const ROLE_TITLES = {
@@ -44,6 +48,10 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sortKey, setSortKey] = useState('fullName')
+  const [sortDir, setSortDir] = useState('asc')
 
   const title = ROLE_TITLES[role] || 'Users'
 
@@ -71,6 +79,48 @@ export default function UsersPage() {
     () => (editingId ? `Edit ${title.slice(0, -1)}` : `Add ${title.slice(0, -1)}`),
     [editingId, title],
   )
+
+  const displayedUsers = useMemo(() => {
+    const filtered = users.filter((user) => {
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && user.active !== false) ||
+        (statusFilter === 'INACTIVE' && user.active === false)
+      const matchesQuery = matchesSearch(search, [
+        user.fullName,
+        user.email,
+        user.studentId,
+        user.phone,
+      ])
+      return matchesStatus && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (user) => {
+      if (sortKey === 'active') return user.active !== false ? 1 : 0
+      return user[sortKey]
+    })
+  }, [users, search, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const userColumns = canManage
+    ? [
+        { key: 'fullName', label: 'Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'studentId', label: 'ID' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'active', label: 'Status' },
+        { key: 'actions', label: 'Actions', sortable: false },
+      ]
+    : [
+        { key: 'fullName', label: 'Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'studentId', label: 'Student ID' },
+        { key: 'active', label: 'Status' },
+      ]
 
   const openCreate = () => {
     setEditingId(null)
@@ -197,8 +247,30 @@ export default function UsersPage() {
       {!loading && users.length === 0 && <EmptyBlock message={`No ${title.toLowerCase()} found.`} />}
 
       {!loading && users.length > 0 && (
-        <Table headers={canManage ? ['Name', 'Email', 'ID', 'Phone', 'Status', 'Actions'] : ['Name', 'Email', 'Student ID', 'Status']}>
-          {users.map((u) => (
+        <>
+          <TableToolbar>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search name, email, ID, phone…"
+            />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </FilterSelect>
+          </TableToolbar>
+
+          {displayedUsers.length === 0 ? (
+            <EmptyBlock message="No users match your filters." />
+          ) : (
+            <Table
+              sortableHeaders={userColumns}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+            >
+              {displayedUsers.map((u) => (
             <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
               <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{u.fullName}</td>
               <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.email}</td>
@@ -218,8 +290,10 @@ export default function UsersPage() {
                 </td>
               )}
             </tr>
-          ))}
-        </Table>
+              ))}
+            </Table>
+          )}
+        </>
       )}
     </div>
   )

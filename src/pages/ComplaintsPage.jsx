@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPatch, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 const STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED']
@@ -33,6 +37,10 @@ export default function ComplaintsPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,6 +84,29 @@ export default function ComplaintsPage() {
     }
   }
 
+  const displayedItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter
+      const matchesQuery = matchesSearch(search, [item.title, item.studentName, item.description])
+      return matchesStatus && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
+  }, [items, search, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'title', label: 'Title' },
+    { key: 'studentName', label: 'Student' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Created' },
+    { key: 'update', label: canUpdate ? 'Update' : 'Description', sortable: false },
+  ]
+
   return (
     <div>
       <PageHeader
@@ -117,8 +148,22 @@ export default function ComplaintsPage() {
       {!loading && items.length === 0 && <EmptyBlock message="No complaints found." />}
 
       {!loading && items.length > 0 && (
-        <Table headers={['Title', 'Student', 'Status', 'Created', ...(canUpdate ? ['Update'] : ['Description'])]}>
-          {items.map((c) => (
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search title, student, description…" />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </FilterSelect>
+          </TableToolbar>
+
+          {displayedItems.length === 0 ? (
+            <EmptyBlock message="No complaints match your filters." />
+          ) : (
+            <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+              {displayedItems.map((c) => (
             <tr key={c.id}>
               <td className="px-4 py-3">
                 <p className="font-medium text-slate-900 dark:text-white">{c.title}</p>
@@ -147,8 +192,10 @@ export default function ComplaintsPage() {
                 )}
               </td>
             </tr>
-          ))}
-        </Table>
+              ))}
+            </Table>
+          )}
+        </>
       )}
     </div>
   )

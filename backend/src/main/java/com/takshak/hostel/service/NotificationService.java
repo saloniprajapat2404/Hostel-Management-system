@@ -5,8 +5,10 @@ import com.takshak.hostel.dto.NotificationSummaryDto;
 import com.takshak.hostel.entity.Notification;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.NotificationType;
+import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.NotificationRepository;
+import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
@@ -19,9 +21,13 @@ public class NotificationService {
     private static final int LIST_LIMIT = 20;
 
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
     }
 
     public NotificationSummaryDto summary() {
@@ -66,5 +72,27 @@ public class NotificationService {
         notification.setLinkPath(linkPath);
         notification.setCreatedAt(createdAt != null ? createdAt : Instant.now());
         return notificationRepository.save(notification);
+    }
+
+    public void notifyRoles(
+            List<Role> roles,
+            String title,
+            String message,
+            NotificationType type,
+            String linkPath) {
+        userRepository.findByRoleIn(roles).stream()
+                .filter(User::isActive)
+                .forEach(user -> create(user, title, message, type, linkPath, null));
+    }
+
+    public void notifyUser(
+            User user,
+            String title,
+            String message,
+            NotificationType type,
+            String linkPath) {
+        if (user != null && user.isActive()) {
+            create(user, title, message, type, linkPath, null);
+        }
     }
 }

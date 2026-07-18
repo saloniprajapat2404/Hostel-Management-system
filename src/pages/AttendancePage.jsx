@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 export default function AttendancePage() {
@@ -26,6 +30,11 @@ export default function AttendancePage() {
   const [type, setType] = useState('CHECK_IN')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('ALL')
+  const [dateFilter, setDateFilter] = useState('')
+  const [sortKey, setSortKey] = useState('timestamp')
+  const [sortDir, setSortDir] = useState('desc')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -60,13 +69,40 @@ export default function AttendancePage() {
 
   const studentOptions = useMemo(() => students, [students])
 
+  const displayedItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      const matchesType = typeFilter === 'ALL' || item.type === typeFilter
+      const matchesDate =
+        !dateFilter ||
+        (item.timestamp && item.timestamp.slice(0, 10) === dateFilter)
+      const matchesQuery = matchesSearch(search, [item.studentName, item.studentCode, item.notes])
+      return matchesType && matchesDate && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
+  }, [items, search, typeFilter, dateFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'studentName', label: 'Student' },
+    { key: 'studentCode', label: 'Code' },
+    { key: 'type', label: 'Type' },
+    { key: 'timestamp', label: 'Time' },
+    { key: 'recordedByName', label: 'Recorded by' },
+    { key: 'notes', label: 'Notes' },
+  ]
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     setError('')
     try {
       await apiPost('/api/attendance', {
-        studentId: Number(studentId),
+        studentId,
         type,
         notes: notes || null,
       })
@@ -131,8 +167,28 @@ export default function AttendancePage() {
       {!loading && items.length === 0 && <EmptyBlock message="No attendance records." />}
 
       {!loading && items.length > 0 && (
-        <Table headers={['Student', 'Code', 'Type', 'Time', 'Recorded by', 'Notes']}>
-          {items.map((a) => (
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search student, code, notes…" />
+            <FilterSelect value={typeFilter} onChange={setTypeFilter}>
+              <option value="ALL">All types</option>
+              <option value="CHECK_IN">Check in</option>
+              <option value="CHECK_OUT">Check out</option>
+            </FilterSelect>
+            <input
+              type="date"
+              className={`${fieldClass} sm:w-auto`}
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              aria-label="Filter by date"
+            />
+          </TableToolbar>
+
+          {displayedItems.length === 0 ? (
+            <EmptyBlock message="No attendance records match your filters." />
+          ) : (
+            <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+              {displayedItems.map((a) => (
             <tr key={a.id}>
               <td className="px-4 py-3 font-medium">{a.studentName}</td>
               <td className="px-4 py-3">{a.studentCode || '—'}</td>
@@ -145,8 +201,10 @@ export default function AttendancePage() {
               <td className="px-4 py-3">{a.recordedByName || '—'}</td>
               <td className="px-4 py-3">{a.notes || '—'}</td>
             </tr>
-          ))}
-        </Table>
+              ))}
+            </Table>
+          )}
+        </>
       )}
     </div>
   )

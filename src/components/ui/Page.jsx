@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export function BackButton({ fallback = '/app', className = '' }) {
@@ -100,25 +100,95 @@ export function StatusBadge({ children, tone = 'slate' }) {
   )
 }
 
-export function Table({ headers, children }) {
+export function Table({ headers, children, sortableHeaders, sortKey, sortDir, onSort }) {
+  const useSortable = Array.isArray(sortableHeaders) && sortableHeaders.length > 0
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
         <thead className="bg-slate-50 dark:bg-slate-800/60">
           <tr>
-            {headers.map((h) => (
-              <th
-                key={h}
-                className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-              >
-                {h}
-              </th>
-            ))}
+            {useSortable
+              ? sortableHeaders.map((column) => (
+                  <SortableTh
+                    key={column.key}
+                    label={column.label}
+                    sortKey={column.key}
+                    activeKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={onSort}
+                    sortable={column.sortable !== false}
+                  />
+                ))
+              : headers.map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                  >
+                    {h}
+                  </th>
+                ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{children}</tbody>
       </table>
     </div>
+  )
+}
+
+export function SortableTh({ label, sortKey, activeKey, sortDir, onSort, sortable = true }) {
+  const active = sortKey === activeKey
+  const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+
+  if (!sortable) {
+    return (
+      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </th>
+    )
+  }
+
+  return (
+    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <button
+        type="button"
+        onClick={() => onSort?.(sortKey)}
+        className="inline-flex items-center gap-1 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? 'text-primary' : 'opacity-40'}`} aria-hidden="true" />
+      </button>
+    </th>
+  )
+}
+
+export function TableToolbar({ children, className = '' }) {
+  return (
+    <div className={`mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+export function SearchInput({ value, onChange, placeholder = 'Search…', className = '' }) {
+  return (
+    <div className={`relative min-w-[200px] flex-1 ${className}`}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <input
+        className={`${fieldClass} pl-9`}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  )
+}
+
+export function FilterSelect({ value, onChange, children, className = '' }) {
+  return (
+    <select className={`${fieldClass} sm:w-auto ${className}`} value={value} onChange={(e) => onChange(e.target.value)}>
+      {children}
+    </select>
   )
 }
 

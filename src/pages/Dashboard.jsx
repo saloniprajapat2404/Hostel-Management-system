@@ -121,7 +121,7 @@ function buildKpis(stats, role, studentFeeBalance) {
         icon: MessageSquare,
       },
       {
-        label: 'Active notices',
+        label: 'Active notice',
         value: stats.activeNotices ?? 0,
         tone: 'slate',
         icon: Bell,

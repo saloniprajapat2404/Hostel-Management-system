@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 export default function AllocationsPage() {
@@ -26,6 +30,10 @@ export default function AllocationsPage() {
   const [studentId, setStudentId] = useState('')
   const [bedId, setBedId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sortKey, setSortKey] = useState('allocatedAt')
+  const [sortDir, setSortDir] = useState('desc')
 
   const vacantBeds = useMemo(() => {
     const beds = []
@@ -83,8 +91,8 @@ export default function AllocationsPage() {
     setError('')
     try {
       await apiPost('/api/allocations', {
-        studentId: Number(studentId),
-        bedId: Number(bedId),
+        studentId,
+        bedId,
       })
       setShowForm(false)
       setStudentId('')
@@ -106,6 +114,42 @@ export default function AllocationsPage() {
       setError(err.message || 'Deallocate failed')
     }
   }
+
+  const displayedAllocations = useMemo(() => {
+    const filtered = allocations.filter((allocation) => {
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && allocation.active) ||
+        (statusFilter === 'ENDED' && !allocation.active)
+      const matchesQuery = matchesSearch(search, [
+        allocation.studentName,
+        allocation.studentEmail,
+        allocation.roomNumber,
+        allocation.bedLabel,
+      ])
+      return matchesStatus && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (allocation) => {
+      if (sortKey === 'roomBed') return `${allocation.roomNumber} ${allocation.bedLabel}`
+      if (sortKey === 'active') return allocation.active ? 1 : 0
+      return allocation[sortKey]
+    })
+  }, [allocations, search, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'studentName', label: 'Student' },
+    { key: 'studentEmail', label: 'Email' },
+    { key: 'roomBed', label: 'Room / Bed' },
+    { key: 'allocatedAt', label: 'Allocated' },
+    { key: 'active', label: 'Status' },
+    ...(canManage ? [{ key: 'actions', label: 'Actions', sortable: false }] : []),
+  ]
 
   return (
     <div>
@@ -155,8 +199,21 @@ export default function AllocationsPage() {
       {!loading && allocations.length === 0 && <EmptyBlock message="No allocations yet." />}
 
       {!loading && allocations.length > 0 && (
-        <Table headers={['Student', 'Email', 'Room / Bed', 'Allocated', 'Status', ...(canManage ? ['Actions'] : [])]}>
-          {allocations.map((a) => (
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search student, email, room…" />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="ENDED">Ended</option>
+            </FilterSelect>
+          </TableToolbar>
+
+          {displayedAllocations.length === 0 ? (
+            <EmptyBlock message="No allocations match your filters." />
+          ) : (
+            <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+              {displayedAllocations.map((a) => (
             <tr key={a.id}>
               <td className="px-4 py-3 font-medium">{a.studentName}</td>
               <td className="px-4 py-3">{a.studentEmail}</td>
@@ -177,8 +234,10 @@ export default function AllocationsPage() {
                 </td>
               )}
             </tr>
-          ))}
-        </Table>
+              ))}
+            </Table>
+          )}
+        </>
       )}
     </div>
   )

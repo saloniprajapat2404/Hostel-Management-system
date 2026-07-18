@@ -6,9 +6,11 @@ import com.takshak.hostel.dto.UpdateComplaintStatusRequest;
 import com.takshak.hostel.entity.Complaint;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.ComplaintStatus;
+import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.ComplaintRepository;
+import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
@@ -18,9 +20,16 @@ import org.springframework.stereotype.Service;
 public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
-    public ComplaintService(ComplaintRepository complaintRepository) {
+    public ComplaintService(
+            ComplaintRepository complaintRepository,
+            NotificationService notificationService,
+            UserRepository userRepository) {
         this.complaintRepository = complaintRepository;
+        this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     public List<ComplaintDto> list() {
@@ -44,7 +53,14 @@ public class ComplaintService {
         complaint.setTitle(request.title().trim());
         complaint.setDescription(request.description().trim());
         complaint.setStatus(ComplaintStatus.OPEN);
-        return toDto(complaintRepository.save(complaint));
+        Complaint saved = complaintRepository.save(complaint);
+        notificationService.notifyRoles(
+                List.of(Role.SUPER_ADMIN, Role.ADMIN, Role.WARDEN),
+                "New complaint",
+                student.getFullName() + ": " + saved.getTitle(),
+                NotificationType.COMPLAINT,
+                "/app/complaints");
+        return toDto(saved);
     }
 
     public ComplaintDto updateStatus(String id, UpdateComplaintStatusRequest request) {
@@ -59,7 +75,14 @@ public class ComplaintService {
         } else {
             complaint.setResolvedAt(null);
         }
-        return toDto(complaintRepository.save(complaint));
+        Complaint saved = complaintRepository.save(complaint);
+        notificationService.notifyUser(
+                userRepository.findById(saved.getStudentId()).orElse(null),
+                "Complaint updated",
+                saved.getTitle() + " is now " + saved.getStatus().name().replace('_', ' '),
+                NotificationType.COMPLAINT,
+                "/app/complaints");
+        return toDto(saved);
     }
 
     private ComplaintDto toDto(Complaint c) {

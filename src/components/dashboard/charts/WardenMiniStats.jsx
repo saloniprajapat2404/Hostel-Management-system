@@ -58,7 +58,7 @@ export default function WardenMiniStats({ students = 0, activeNotices = 0, loadi
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <MiniStatCard label="Students" value={students} tone="teal" icon={GraduationCap} />
-      <MiniStatCard label="Active notices" value={activeNotices} tone="slate" icon={Bell} />
+      <MiniStatCard label="Active notice" value={activeNotices} tone="slate" icon={Bell} />
     </div>
   )
 }

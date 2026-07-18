@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IndianRupee, Search, UserRound, Wallet } from 'lucide-react'
-import { apiGet, apiPost } from '../utils/api'
+import { IndianRupee, UserRound, Wallet } from 'lucide-react'
+import { apiDelete, apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import {
   ActionButton,
@@ -8,12 +8,15 @@ import {
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
 } from '../components/ui/Page'
+import { sortRows, toggleSort } from '../utils/tableHelpers'
 
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash' },
@@ -37,6 +40,15 @@ const emptyPaymentForm = {
   method: 'UPI',
   referenceNote: '',
 }
+
+const emptyExpenseForm = {
+  category: 'Maintenance',
+  description: '',
+  amount: '',
+  expenseDate: new Date().toISOString().slice(0, 10),
+}
+
+const EXPENSE_CATEGORIES = ['Maintenance', 'Utilities', 'Staff', 'Supplies', 'Other']
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
@@ -76,9 +88,12 @@ function StatCard({ label, value, tone = 'slate', hint }) {
 export default function FeesPage() {
   const role = getSession()?.role
   const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const isSuperAdmin = role === 'SUPER_ADMIN'
 
   const [overview, setOverview] = useState(null)
   const [students, setStudents] = useState([])
+  const [expenses, setExpenses] = useState([])
+  const [totalExpenses, setTotalExpenses] = useState(0)
   const [selectedId, setSelectedId] = useState(null)
   const [studentFees, setStudentFees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -91,15 +106,29 @@ export default function FeesPage() {
   const [paymentFeeId, setPaymentFeeId] = useState(null)
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm)
   const [saving, setSaving] = useState(false)
+  const [sortKey, setSortKey] = useState('fullName')
+  const [sortDir, setSortDir] = useState('asc')
+  const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [expenseForm, setExpenseForm] = useState(emptyExpenseForm)
+  const [expenseSortKey, setExpenseSortKey] = useState('expenseDate')
+  const [expenseSortDir, setExpenseSortDir] = useState('desc')
 
   const refreshOverview = useCallback(async () => {
-    const [overviewData, studentData] = await Promise.all([
+    const requests = [
       apiGet('/api/fees/overview'),
       apiGet('/api/fees/students'),
-    ])
-    setOverview(overviewData)
-    setStudents(studentData || [])
-  }, [])
+    ]
+    if (isSuperAdmin) {
+      requests.push(apiGet('/api/expenses'), apiGet('/api/expenses/total'))
+    }
+    const results = await Promise.all(requests)
+    setOverview(results[0])
+    setStudents(results[1] || [])
+    if (isSuperAdmin) {
+      setExpenses(results[2] || [])
+      setTotalExpenses(Number(results[3]?.totalExpenses || 0))
+    }
+  }, [isSuperAdmin])
 
   const refreshStudentFees = useCallback(async (studentId) => {
     if (!studentId) return
@@ -163,7 +192,7 @@ export default function FeesPage() {
 
   const filteredStudents = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return students.filter((s) => {
+    const filtered = students.filter((s) => {
       const matchesQuery =
         !q ||
         s.fullName?.toLowerCase().includes(q) ||
@@ -172,7 +201,51 @@ export default function FeesPage() {
       const matchesStatus = statusFilter === 'ALL' || s.overallStatus === statusFilter
       return matchesQuery && matchesStatus
     })
-  }, [students, query, statusFilter])
+    return sortRows(filtered, sortKey, sortDir, (student) => {
+      if (sortKey === 'fullName') return student.fullName
+      if (sortKey === 'totalFees') return student.totalFees
+      if (sortKey === 'totalPaid') return student.totalPaid
+      if (sortKey === 'balance') return student.balance
+      if (sortKey === 'overallStatus') return student.overallStatus
+      if (sortKey === 'lastPaymentMethod') return student.lastPaymentMethod
+      return student[sortKey]
+    })
+  }, [students, query, statusFilter, sortKey, sortDir])
+
+  const sortedExpenses = useMemo(
+    () => sortRows(expenses, expenseSortKey, expenseSortDir, (expense) => expense[expenseSortKey]),
+    [expenses, expenseSortKey, expenseSortDir],
+  )
+
+  const handleStudentSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const handleExpenseSort = (key) => {
+    const next = toggleSort(expenseSortKey, expenseSortDir, key)
+    setExpenseSortKey(next.sortKey)
+    setExpenseSortDir(next.sortDir)
+  }
+
+  const studentColumns = [
+    { key: 'fullName', label: 'Student' },
+    { key: 'totalFees', label: 'Total' },
+    { key: 'totalPaid', label: 'Paid' },
+    { key: 'balance', label: 'Balance' },
+    { key: 'overallStatus', label: 'Status' },
+    { key: 'lastPaymentMethod', label: 'Last method' },
+  ]
+
+  const expenseColumns = [
+    { key: 'expenseDate', label: 'Date' },
+    { key: 'category', label: 'Category' },
+    { key: 'description', label: 'Description' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'recordedByName', label: 'Recorded by' },
+    { key: 'actions', label: 'Actions', sortable: false },
+  ]
 
   const selectedStudent = useMemo(
     () => students.find((s) => s.studentId === selectedId) || null,
@@ -221,6 +294,37 @@ export default function FeesPage() {
       setError(err.message || 'Failed to record payment')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCreateExpense = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await apiPost('/api/expenses', {
+        category: expenseForm.category,
+        description: expenseForm.description || null,
+        amount: Number(expenseForm.amount),
+        expenseDate: expenseForm.expenseDate,
+      })
+      setExpenseForm(emptyExpenseForm)
+      setShowExpenseForm(false)
+      await refreshOverview()
+    } catch (err) {
+      setError(err.message || 'Failed to record expense')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm('Delete this expense?')) return
+    try {
+      await apiDelete(`/api/expenses/${id}`)
+      await refreshOverview()
+    } catch (err) {
+      setError(err.message || 'Failed to delete expense')
     }
   }
 
@@ -284,6 +388,103 @@ export default function FeesPage() {
             />
           </div>
 
+          {isSuperAdmin && (
+            <Card className="mb-6">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Expenses</h2>
+                  <p className="text-sm text-slate-500">
+                    Hostel operating expenses · Total {formatCurrency(totalExpenses)}
+                  </p>
+                </div>
+                <ActionButton onClick={() => setShowExpenseForm(true)}>Add expense</ActionButton>
+              </div>
+
+              {showExpenseForm && (
+                <form onSubmit={handleCreateExpense} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">New expense</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Category">
+                      <select
+                        className={fieldClass}
+                        value={expenseForm.category}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                      >
+                        {EXPENSE_CATEGORIES.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Date">
+                      <input
+                        type="date"
+                        className={fieldClass}
+                        required
+                        value={expenseForm.expenseDate}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Amount (₹)">
+                      <input
+                        type="number"
+                        min="1"
+                        className={fieldClass}
+                        required
+                        value={expenseForm.amount}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Description">
+                      <input
+                        className={fieldClass}
+                        value={expenseForm.description}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <ActionButton type="submit" disabled={saving}>
+                      {saving ? 'Saving…' : 'Save expense'}
+                    </ActionButton>
+                    <ActionButton variant="ghost" onClick={() => setShowExpenseForm(false)}>Cancel</ActionButton>
+                  </div>
+                </form>
+              )}
+
+              {sortedExpenses.length === 0 ? (
+                <EmptyBlock message="No expenses recorded yet." />
+              ) : (
+                <Table
+                  sortableHeaders={expenseColumns}
+                  sortKey={expenseSortKey}
+                  sortDir={expenseSortDir}
+                  onSort={handleExpenseSort}
+                >
+                  {sortedExpenses.map((expense) => (
+                    <tr key={expense.id}>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {expense.expenseDate
+                          ? new Date(expense.expenseDate).toLocaleDateString('en-IN')
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{expense.category}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{expense.description || '—'}</td>
+                      <td className="px-4 py-3 font-medium text-red-700 dark:text-red-300">
+                        {formatCurrency(expense.amount)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{expense.recordedByName || '—'}</td>
+                      <td className="px-4 py-3">
+                        <ActionButton variant="danger" onClick={() => handleDeleteExpense(expense.id)}>
+                          Delete
+                        </ActionButton>
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+              )}
+            </Card>
+          )}
+
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <Card className="p-0 overflow-hidden">
               <div className="border-b border-slate-200 p-4 dark:border-slate-800">
@@ -292,25 +493,17 @@ export default function FeesPage() {
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Students</h2>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="relative flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      className={`${fieldClass} pl-9`}
-                      placeholder="Search name, email, or student ID"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
-                  </div>
-                  <select
-                    className={fieldClass}
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
+                  <SearchInput
+                    value={query}
+                    onChange={setQuery}
+                    placeholder="Search name, email, or student ID"
+                  />
+                  <FilterSelect value={statusFilter} onChange={setStatusFilter}>
                     <option value="ALL">All statuses</option>
                     <option value="PAID">Fully paid</option>
                     <option value="PARTIAL">Partial</option>
                     <option value="PENDING">Pending</option>
-                  </select>
+                  </FilterSelect>
                 </div>
               </div>
 
@@ -319,7 +512,12 @@ export default function FeesPage() {
                   <EmptyBlock message="No students match your filters." />
                 </div>
               ) : (
-                <Table headers={['Student', 'Total', 'Paid', 'Balance', 'Status', 'Last method']}>
+                <Table
+                  sortableHeaders={studentColumns}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleStudentSort}
+                >
                   {filteredStudents.map((student) => {
                     const active = selectedId === student.studentId
                     return (

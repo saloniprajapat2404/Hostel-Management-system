@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
@@ -10,7 +11,9 @@ import {
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 export default function NoticesPage() {
@@ -24,6 +27,9 @@ export default function NoticesPage() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -31,7 +37,7 @@ export default function NoticesPage() {
     try {
       setItems((await apiGet('/api/notices')) || [])
     } catch (err) {
-      setError(err.message || 'Failed to load notices')
+      setError(err.message || 'Failed to load notice')
     } finally {
       setLoading(false)
     }
@@ -68,10 +74,29 @@ export default function NoticesPage() {
     }
   }
 
+  const displayedItems = useMemo(() => {
+    const filtered = items.filter((item) =>
+      matchesSearch(search, [item.title, item.body, item.createdByName]),
+    )
+    return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
+  }, [items, search, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'title', label: 'Title' },
+    { key: 'createdByName', label: 'Author' },
+    { key: 'createdAt', label: 'Created' },
+  ]
+
   return (
     <div>
       <PageHeader
-        title="Notices"
+        title="Notice"
         subtitle="Hostel announcements and updates."
         actions={
           canCreate ? (
@@ -106,43 +131,53 @@ export default function NoticesPage() {
         </Card>
       )}
 
-      {!loading && items.length === 0 && <EmptyBlock message="No notices yet." />}
+      {!loading && items.length === 0 && <EmptyBlock message="No notice yet." />}
 
       {!loading && items.length > 0 && (
-        <div className="space-y-4">
-          {items.map((n) => (
-            <Card key={n.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{n.title}</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {n.createdByName || 'Staff'} · {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
-                  </p>
-                </div>
-                {canDelete && (
-                  <ActionButton variant="danger" onClick={() => handleDelete(n.id)}>Delete</ActionButton>
-                )}
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{n.body}</p>
-            </Card>
-          ))}
-        </div>
-      )}
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search title, body, author…" />
+          </TableToolbar>
 
-      {!loading && items.length > 0 && canDelete && (
-        <div className="mt-6">
-          <Table headers={['Title', 'Author', 'Created']}>
-            {items.map((n) => (
-              <tr key={`row-${n.id}`}>
-                <td className="px-4 py-3 font-medium">{n.title}</td>
-                <td className="px-4 py-3">{n.createdByName}</td>
-                <td className="px-4 py-3 text-slate-500">
-                  {n.createdAt ? new Date(n.createdAt).toLocaleString() : '—'}
-                </td>
-              </tr>
-            ))}
-          </Table>
-        </div>
+          {displayedItems.length === 0 ? (
+            <EmptyBlock message="No notice matches your search." />
+          ) : (
+            <div className="space-y-4">
+              {displayedItems.map((n) => (
+                <Card key={n.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{n.title}</h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {n.createdByName || 'Staff'} · {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
+                      </p>
+                    </div>
+                    {canDelete && (
+                      <ActionButton variant="danger" onClick={() => handleDelete(n.id)}>Delete</ActionButton>
+                    )}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{n.body}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {displayedItems.length > 0 && canDelete && (
+            <div className="mt-6">
+              <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {displayedItems.map((n) => (
+                  <tr key={`row-${n.id}`}>
+                    <td className="px-4 py-3 font-medium">{n.title}</td>
+                    <td className="px-4 py-3">{n.createdByName}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {n.createdAt ? new Date(n.createdAt).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

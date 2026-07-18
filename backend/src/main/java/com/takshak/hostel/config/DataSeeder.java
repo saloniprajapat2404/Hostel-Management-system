@@ -4,6 +4,7 @@ import com.takshak.hostel.entity.AdmissionRequest;
 import com.takshak.hostel.entity.Allocation;
 import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.Complaint;
+import com.takshak.hostel.entity.Expense;
 import com.takshak.hostel.entity.Notice;
 import com.takshak.hostel.entity.Room;
 import com.takshak.hostel.entity.StudentFee;
@@ -17,14 +18,13 @@ import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.ComplaintRepository;
+import com.takshak.hostel.repository.ExpenseRepository;
 import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.repository.RoomRepository;
 import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.SystemSettingRepository;
 import com.takshak.hostel.repository.UserRepository;
-import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.repository.NotificationRepository;
-import com.takshak.hostel.service.NotificationService;
 import com.takshak.hostel.service.StudentFeeService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -53,8 +53,8 @@ public class DataSeeder implements CommandLineRunner {
     private final SystemSettingRepository systemSettingRepository;
     private final StudentFeeRepository studentFeeRepository;
     private final StudentFeeService studentFeeService;
-    private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
+    private final ExpenseRepository expenseRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
@@ -67,8 +67,8 @@ public class DataSeeder implements CommandLineRunner {
             SystemSettingRepository systemSettingRepository,
             StudentFeeRepository studentFeeRepository,
             StudentFeeService studentFeeService,
-            NotificationService notificationService,
             NotificationRepository notificationRepository,
+            ExpenseRepository expenseRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
@@ -79,8 +79,8 @@ public class DataSeeder implements CommandLineRunner {
         this.systemSettingRepository = systemSettingRepository;
         this.studentFeeRepository = studentFeeRepository;
         this.studentFeeService = studentFeeService;
-        this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
+        this.expenseRepository = expenseRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -231,7 +231,7 @@ public class DataSeeder implements CommandLineRunner {
         systemSettingRepository.save(new SystemSetting("bedsPerRoom", "2"));
 
         seedFeesForStudents(students);
-        seedDemoNotifications(admin, warden, students.get(0));
+        ensureExpenses();
 
         log.info("Seed complete: users={}, rooms=30, allocations=15 (admin={}, superAdmin={})",
                 userRepository.count(), admin.getEmail(), superAdmin.getEmail());
@@ -249,69 +249,47 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void ensureNotifications() {
-        if (notificationRepository.count() > 0) {
-            return;
-        }
-        userRepository.findByEmailIgnoreCase("admin@takshak.edu").ifPresent(admin ->
-                userRepository.findByEmailIgnoreCase("warden@takshak.edu").ifPresent(warden ->
-                        userRepository.findByEmailIgnoreCase("student01@takshak.edu").ifPresent(student ->
-                                seedDemoNotifications(admin, warden, student))));
+        removeSeededDemoNotifications();
+        ensureExpenses();
     }
 
-    private void seedDemoNotifications(User admin, User warden, User student) {
-        Instant now = Instant.now();
-
-        notificationService.create(
-                admin,
-                "New admission request",
+    private void removeSeededDemoNotifications() {
+        List<String> demoMessages = List.of(
                 "Rahul Sharma submitted an admission request",
-                NotificationType.ADMISSION,
-                "/app/admissions",
-                now.minusSeconds(3600));
-        notificationService.create(
-                admin,
-                "Open complaint",
                 "Broken fan in room — needs attention",
-                NotificationType.COMPLAINT,
-                "/app/complaints",
-                now.minusSeconds(7200));
-        notificationService.create(
-                admin,
-                "Notice published",
                 "Mess Menu Update is now live",
-                NotificationType.NOTICE,
-                "/app/notices",
-                now.minusSeconds(86400));
-
-        notificationService.create(
-                warden,
-                "Complaint assigned",
                 "Wi-Fi connectivity issue reported on floor 1",
-                NotificationType.COMPLAINT,
-                "/app/complaints",
-                now.minusSeconds(5400));
-        notificationService.create(
-                warden,
-                "New notice",
                 "Maintenance Window scheduled for Sunday",
-                NotificationType.NOTICE,
-                "/app/notices",
-                now.minusSeconds(43200));
-
-        notificationService.create(
-                student,
-                "Fee payment received",
                 "₹10,000 hostel fee payment recorded",
-                NotificationType.FEE,
-                "/app/my-fees",
-                now.minusSeconds(10800));
-        notificationService.create(
-                student,
-                "New notice",
-                "Welcome notice — read hostel timings",
-                NotificationType.NOTICE,
-                "/app/notices",
-                now.minusSeconds(172800));
+                "Welcome notice — read hostel timings");
+        notificationRepository.findAll().stream()
+                .filter(notification -> demoMessages.contains(notification.getMessage()))
+                .forEach(notificationRepository::delete);
+    }
+
+    private void ensureExpenses() {
+        if (expenseRepository.count() > 0) {
+            return;
+        }
+        userRepository.findByEmailIgnoreCase("superadmin@takshak.edu").ifPresent(superAdmin -> {
+            Expense maintenance = new Expense();
+            maintenance.setCategory("Maintenance");
+            maintenance.setDescription("Generator fuel and common-area repairs");
+            maintenance.setAmount(new BigDecimal("12500"));
+            maintenance.setExpenseDate(LocalDate.now().minusDays(12));
+            maintenance.setRecordedById(superAdmin.getId());
+            maintenance.setRecordedByName(superAdmin.getFullName());
+            expenseRepository.save(maintenance);
+
+            Expense utilities = new Expense();
+            utilities.setCategory("Utilities");
+            utilities.setDescription("Electricity bill — hostel block A");
+            utilities.setAmount(new BigDecimal("28750"));
+            utilities.setExpenseDate(LocalDate.now().minusDays(5));
+            utilities.setRecordedById(superAdmin.getId());
+            utilities.setRecordedByName(superAdmin.getFullName());
+            expenseRepository.save(utilities);
+        });
     }
 
     private void ensureStudentProfilesAndFees() {

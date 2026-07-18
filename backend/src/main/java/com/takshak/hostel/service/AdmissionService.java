@@ -5,6 +5,7 @@ import com.takshak.hostel.dto.CreateAdmissionRequest;
 import com.takshak.hostel.entity.AdmissionRequest;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.AdmissionStatus;
+import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
@@ -21,14 +22,17 @@ public class AdmissionService {
     private final AdmissionRequestRepository admissionRequestRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     public AdmissionService(
             AdmissionRequestRepository admissionRequestRepository,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            NotificationService notificationService) {
         this.admissionRequestRepository = admissionRequestRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     public List<AdmissionRequestDto> list() {
@@ -45,7 +49,14 @@ public class AdmissionService {
         entity.setStudentId(request.studentId().trim().toUpperCase());
         entity.setNotes(request.notes());
         entity.setStatus(AdmissionStatus.PENDING);
-        return toDto(admissionRequestRepository.save(entity));
+        AdmissionRequest saved = admissionRequestRepository.save(entity);
+        notificationService.notifyRoles(
+                List.of(Role.SUPER_ADMIN, Role.ADMIN),
+                "New admission request",
+                saved.getStudentName() + " submitted an admission request",
+                NotificationType.ADMISSION,
+                "/app/admissions");
+        return toDto(saved);
     }
 
     public AdmissionRequestDto approve(String id) {

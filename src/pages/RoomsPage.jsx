@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 const emptyForm = { roomNumber: '', floor: 1, capacity: 2, active: true }
@@ -26,6 +30,11 @@ export default function RoomsPage() {
   const [editingId, setEditingId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [floorFilter, setFloorFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sortKey, setSortKey] = useState('roomNumber')
+  const [sortDir, setSortDir] = useState('asc')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -98,6 +107,41 @@ export default function RoomsPage() {
     }
   }
 
+  const floorOptions = useMemo(() => {
+    const floors = [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b)
+    return floors
+  }, [rooms])
+
+  const displayedRooms = useMemo(() => {
+    const filtered = rooms.filter((room) => {
+      const matchesFloor = floorFilter === 'ALL' || String(room.floor) === floorFilter
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && room.active !== false) ||
+        (statusFilter === 'INACTIVE' && room.active === false)
+      const matchesQuery = matchesSearch(search, [room.roomNumber, String(room.floor)])
+      return matchesFloor && matchesStatus && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (room) => {
+      if (sortKey === 'active') return room.active !== false ? 1 : 0
+      return room[sortKey]
+    })
+  }, [rooms, search, floorFilter, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'roomNumber', label: 'Room' },
+    { key: 'floor', label: 'Floor' },
+    { key: 'occupiedCount', label: 'Occupied' },
+    { key: 'vacantCount', label: 'Vacant' },
+    { key: 'active', label: 'Status' },
+  ]
+
   return (
     <div>
       <PageHeader
@@ -141,8 +185,24 @@ export default function RoomsPage() {
       {!loading && rooms.length === 0 && <EmptyBlock />}
 
       {!loading && rooms.length > 0 && (
-        <div className="space-y-4">
-          {rooms.map((room) => (
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search room number…" />
+            <FilterSelect value={floorFilter} onChange={setFloorFilter}>
+              <option value="ALL">All floors</option>
+              {floorOptions.map((floor) => (
+                <option key={floor} value={String(floor)}>Floor {floor}</option>
+              ))}
+            </FilterSelect>
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </FilterSelect>
+          </TableToolbar>
+
+          <div className="space-y-4">
+            {displayedRooms.map((room) => (
             <Card key={room.id}>
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -178,14 +238,15 @@ export default function RoomsPage() {
                 ))}
               </div>
             </Card>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
 
-      {!loading && rooms.length > 0 && (
-        <div className="mt-6">
-          <Table headers={['Room', 'Floor', 'Occupied', 'Vacant', 'Status']}>
-            {rooms.map((room) => (
+          {displayedRooms.length === 0 ? (
+            <EmptyBlock message="No rooms match your filters." />
+          ) : (
+            <div className="mt-6">
+              <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {displayedRooms.map((room) => (
               <tr key={`row-${room.id}`}>
                 <td className="px-4 py-3 font-medium">{room.roomNumber}</td>
                 <td className="px-4 py-3">{room.floor}</td>
@@ -193,9 +254,11 @@ export default function RoomsPage() {
                 <td className="px-4 py-3">{room.vacantCount}</td>
                 <td className="px-4 py-3">{room.active ? 'Active' : 'Inactive'}</td>
               </tr>
-            ))}
-          </Table>
-        </div>
+                ))}
+              </Table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

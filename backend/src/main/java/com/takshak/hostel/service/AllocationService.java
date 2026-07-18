@@ -4,11 +4,13 @@ import com.takshak.hostel.dto.AllocationDto;
 import com.takshak.hostel.dto.CreateAllocationRequest;
 import com.takshak.hostel.entity.Allocation;
 import com.takshak.hostel.entity.User;
+import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.security.SecurityUtils;
+import com.takshak.hostel.service.NotificationService;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -19,14 +21,17 @@ public class AllocationService {
     private final AllocationRepository allocationRepository;
     private final BedRepository bedRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     public AllocationService(
             AllocationRepository allocationRepository,
             BedRepository bedRepository,
-            UserService userService) {
+            UserService userService,
+            NotificationService notificationService) {
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.userService = userService;
+        this.notificationService = notificationService;
     }
 
     public List<AllocationDto> listAllocations() {
@@ -78,7 +83,14 @@ public class AllocationService {
         allocation.setActive(true);
         allocation.setAllocatedById(actor.getId());
         allocation.setAllocatedByName(actor.getFullName());
-        return toDto(allocationRepository.save(allocation));
+        Allocation saved = allocationRepository.save(allocation);
+        notificationService.notifyUser(
+                student,
+                "Room allocated",
+                saved.getRoomNumber() + " · bed " + saved.getBedLabel(),
+                NotificationType.ALLOCATION,
+                "/app/my-room");
+        return toDto(saved);
     }
 
     public void deallocate(String id) {

@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
+  SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
 
 const emptyForm = {
@@ -37,6 +41,10 @@ export default function AdmissionsPage() {
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
 
   const load = useCallback(async () => {
     if (!canManage) {
@@ -84,6 +92,30 @@ export default function AdmissionsPage() {
     }
   }
 
+  const displayedItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter
+      const matchesQuery = matchesSearch(search, [item.studentName, item.email, item.studentId, item.notes])
+      return matchesStatus && matchesQuery
+    })
+    return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
+  }, [items, search, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key) => {
+    const next = toggleSort(sortKey, sortDir, key)
+    setSortKey(next.sortKey)
+    setSortDir(next.sortDir)
+  }
+
+  const columns = [
+    { key: 'studentName', label: 'Student' },
+    { key: 'email', label: 'Email' },
+    { key: 'studentId', label: 'Student ID' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Created' },
+    { key: 'actions', label: 'Actions', sortable: false },
+  ]
+
   return (
     <div>
       <PageHeader
@@ -129,8 +161,22 @@ export default function AdmissionsPage() {
       {!loading && items.length === 0 && <EmptyBlock message="No admission requests." />}
 
       {!loading && items.length > 0 && (
-        <Table headers={['Student', 'Email', 'Student ID', 'Status', 'Created', 'Actions']}>
-          {items.map((item) => (
+        <>
+          <TableToolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search student, email, ID…" />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </FilterSelect>
+          </TableToolbar>
+
+          {displayedItems.length === 0 ? (
+            <EmptyBlock message="No admissions match your filters." />
+          ) : (
+            <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+              {displayedItems.map((item) => (
             <tr key={item.id}>
               <td className="px-4 py-3 font-medium">{item.studentName}</td>
               <td className="px-4 py-3">{item.email}</td>
@@ -154,8 +200,10 @@ export default function AdmissionsPage() {
                 )}
               </td>
             </tr>
-          ))}
-        </Table>
+              ))}
+            </Table>
+          )}
+        </>
       )}
     </div>
   )

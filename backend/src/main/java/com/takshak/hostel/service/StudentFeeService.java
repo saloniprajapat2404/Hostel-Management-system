@@ -9,6 +9,7 @@ import com.takshak.hostel.entity.FeePayment;
 import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.FeeStatus;
+import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
@@ -26,12 +27,15 @@ public class StudentFeeService {
 
     private final StudentFeeRepository studentFeeRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public StudentFeeService(
             StudentFeeRepository studentFeeRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.studentFeeRepository = studentFeeRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public List<StudentFeeDetailDto> myFees() {
@@ -131,7 +135,15 @@ public class StudentFeeService {
         fee.getPayments().add(payment);
 
         recalculateFee(fee);
-        return StudentFeeDetailDto.from(studentFeeRepository.save(fee));
+        StudentFee saved = studentFeeRepository.save(fee);
+        userRepository.findById(saved.getStudentId()).ifPresent(student ->
+                notificationService.notifyUser(
+                        student,
+                        "Fee payment received",
+                        "₹" + request.amount() + " recorded for " + saved.getFeeType(),
+                        NotificationType.FEE,
+                        "/app/my-fees"));
+        return StudentFeeDetailDto.from(saved);
     }
 
     private StudentFeeSummaryDto buildSummary(User student) {

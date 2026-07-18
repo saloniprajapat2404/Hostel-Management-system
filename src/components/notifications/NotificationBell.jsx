@@ -74,6 +74,7 @@ function NotificationRow({ item, onOpen }) {
   )
 }
 
+
 export default function NotificationBell({ variant = 'dashboard' }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -87,7 +88,8 @@ export default function NotificationBell({ variant = 'dashboard' }) {
     setLoading(true)
     try {
       const data = await apiGet('/api/notifications')
-      setItems(data?.items || [])
+      const apiItems = data?.items || []
+      setItems(apiItems)
       setUnreadCount(Number(data?.unreadCount || 0))
     } catch {
       setItems([])
@@ -142,7 +144,8 @@ export default function NotificationBell({ variant = 'dashboard' }) {
       setItems((prev) => prev.map((n) => ({ ...n, read: true })))
       setUnreadCount(0)
     } catch {
-      /* optional */
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+      setUnreadCount(0)
     }
   }
 
@@ -229,7 +232,7 @@ export default function NotificationBell({ variant = 'dashboard' }) {
               onClick={() => setOpen(false)}
               className="text-[12px] font-medium text-[#3B82F6] hover:underline"
             >
-              View notices →
+              View notice →
             </Link>
           </div>
         </div>
