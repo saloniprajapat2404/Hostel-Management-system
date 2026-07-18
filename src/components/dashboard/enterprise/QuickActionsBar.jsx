@@ -29,7 +29,7 @@ const ACTIONS = {
 }
 
 const linkClass =
-  'flex h-9 w-9 items-center justify-center rounded-[10px] border text-[var(--dash-muted)] transition-colors hover:border-[var(--dash-border)] hover:bg-[var(--dash-hover)] hover:text-[var(--dash-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40'
+  'inline-flex items-center gap-2 rounded-[12px] border px-3 py-2 text-[12px] font-medium text-[var(--dash-muted)] transition-colors hover:border-[var(--dash-border)] hover:bg-[var(--dash-hover)] hover:text-[var(--dash-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40'
 
 export default function QuickActionsBar({ role }) {
   const items = Object.values(ACTIONS).filter((a) => a.roles.includes(role))
@@ -44,12 +44,11 @@ export default function QuickActionsBar({ role }) {
           <Link
             key={to + label}
             to={to}
-            title={label}
-            aria-label={label}
             className={linkClass}
             style={{ borderColor: 'var(--dash-border-subtle)', background: 'var(--dash-surface)' }}
           >
-            <Icon className="h-4 w-4" strokeWidth={2} />
+            <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <span>{label}</span>
           </Link>
         ))}
       </div>

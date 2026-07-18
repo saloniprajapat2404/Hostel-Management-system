@@ -15,8 +15,9 @@ import {
   SearchInput,
   StatusBadge,
   Table,
+  TableToolbar,
 } from '../components/ui/Page'
-import { sortRows, toggleSort } from '../utils/tableHelpers'
+import { sortRows, toggleSort, matchesSearch } from '../utils/tableHelpers'
 
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash' },
@@ -112,6 +113,7 @@ export default function FeesPage() {
   const [expenseForm, setExpenseForm] = useState(emptyExpenseForm)
   const [expenseSortKey, setExpenseSortKey] = useState('expenseDate')
   const [expenseSortDir, setExpenseSortDir] = useState('desc')
+  const [expenseSearch, setExpenseSearch] = useState('')
 
   const refreshOverview = useCallback(async () => {
     const requests = [
@@ -212,10 +214,17 @@ export default function FeesPage() {
     })
   }, [students, query, statusFilter, sortKey, sortDir])
 
-  const sortedExpenses = useMemo(
-    () => sortRows(expenses, expenseSortKey, expenseSortDir, (expense) => expense[expenseSortKey]),
-    [expenses, expenseSortKey, expenseSortDir],
-  )
+  const sortedExpenses = useMemo(() => {
+    const filtered = expenses.filter((expense) =>
+      matchesSearch(expenseSearch, [
+        expense.category,
+        expense.description,
+        expense.recordedByName,
+        expense.amount,
+      ]),
+    )
+    return sortRows(filtered, expenseSortKey, expenseSortDir, (expense) => expense[expenseSortKey])
+  }, [expenses, expenseSearch, expenseSortKey, expenseSortDir])
 
   const handleStudentSort = (key) => {
     const next = toggleSort(sortKey, sortDir, key)
@@ -341,7 +350,11 @@ export default function FeesPage() {
     <div>
       <PageHeader
         title="Fees management"
-        subtitle="Track student fee structure, payments, deposits, and outstanding balances."
+        subtitle={
+          isSuperAdmin
+            ? 'Track student fees, payments, and hostel expenses (Super Admin).'
+            : 'Track student fee structure, payments, deposits, and outstanding balances.'
+        }
       />
 
       {error && (
@@ -361,7 +374,7 @@ export default function FeesPage() {
 
       {!loading && overview && (
         <>
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`mb-6 grid gap-3 sm:grid-cols-2 ${isSuperAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
             <StatCard
               label="Total students"
               value={overview.totalStudents}
@@ -386,6 +399,14 @@ export default function FeesPage() {
               tone="teal"
               hint="Students fully paid"
             />
+            {isSuperAdmin && (
+              <StatCard
+                label="Total expenses"
+                value={formatCurrency(totalExpenses)}
+                tone="red"
+                hint="Hostel operating costs"
+              />
+            )}
           </div>
 
           {isSuperAdmin && (
@@ -452,9 +473,17 @@ export default function FeesPage() {
               )}
 
               {sortedExpenses.length === 0 ? (
-                <EmptyBlock message="No expenses recorded yet." />
+                <EmptyBlock message={expenses.length === 0 ? 'No expenses recorded yet.' : 'No expenses match your search.'} />
               ) : (
-                <Table
+                <>
+                  <TableToolbar className="mb-3">
+                    <SearchInput
+                      value={expenseSearch}
+                      onChange={setExpenseSearch}
+                      placeholder="Search category, description…"
+                    />
+                  </TableToolbar>
+                  <Table
                   sortableHeaders={expenseColumns}
                   sortKey={expenseSortKey}
                   sortDir={expenseSortDir}
@@ -481,6 +510,7 @@ export default function FeesPage() {
                     </tr>
                   ))}
                 </Table>
+                </>
               )}
             </Card>
           )}

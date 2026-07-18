@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
@@ -19,9 +20,11 @@ import {
 } from '../components/ui/Page'
 
 const emptyForm = { roomNumber: '', floor: 1, capacity: 2, active: true }
+const STATUS_FILTERS = ['ALL', 'ACTIVE', 'INACTIVE', 'VACANT']
 
 export default function RoomsPage() {
   const session = getSession()
+  const [params] = useSearchParams()
   const canManage = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +35,10 @@ export default function RoomsPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [floorFilter, setFloorFilter] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = params.get('status')?.toUpperCase()
+    return STATUS_FILTERS.includes(status) ? status : 'ALL'
+  })
   const [sortKey, setSortKey] = useState('roomNumber')
   const [sortDir, setSortDir] = useState('asc')
 
@@ -118,7 +124,8 @@ export default function RoomsPage() {
       const matchesStatus =
         statusFilter === 'ALL' ||
         (statusFilter === 'ACTIVE' && room.active !== false) ||
-        (statusFilter === 'INACTIVE' && room.active === false)
+        (statusFilter === 'INACTIVE' && room.active === false) ||
+        (statusFilter === 'VACANT' && room.vacantCount > 0)
       const matchesQuery = matchesSearch(search, [room.roomNumber, String(room.floor)])
       return matchesFloor && matchesStatus && matchesQuery
     })
@@ -198,6 +205,7 @@ export default function RoomsPage() {
               <option value="ALL">All statuses</option>
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
+              <option value="VACANT">Has vacant beds</option>
             </FilterSelect>
           </TableToolbar>
 

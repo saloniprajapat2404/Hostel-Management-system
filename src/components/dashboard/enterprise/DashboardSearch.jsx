@@ -55,6 +55,7 @@ export default function DashboardSearch({ role }) {
 
   const onSubmit = (e) => {
     e.preventDefault()
+    if (query.trim().length < 2) return
     if (results.length > 0) {
       goToStudent(results[0])
     }
@@ -77,7 +78,7 @@ export default function DashboardSearch({ role }) {
             setOpen(true)
             ensureDirectory()
           }}
-          placeholder="Search student..."
+          placeholder="Find student by name…"
           className="w-full rounded-[12px] border bg-transparent py-2 pl-9 pr-3 text-[13px] text-[var(--dash-text)] outline-none transition focus:border-[#3B82F6]/50"
           style={{ borderColor: 'var(--dash-border)' }}
           aria-label="Search students"
@@ -86,7 +87,7 @@ export default function DashboardSearch({ role }) {
         />
       </form>
 
-      {open && query.trim() && (
+      {open && query.trim().length >= 2 && (
         <ul
           className="absolute right-0 top-full z-40 mt-2 max-h-[240px] w-[min(100vw-2rem,320px)] overflow-y-auto rounded-[14px] border py-1 shadow-lg"
           style={{ borderColor: 'var(--dash-border)', background: 'var(--dash-surface)' }}
@@ -99,8 +100,8 @@ export default function DashboardSearch({ role }) {
             <li className="px-3 py-2 text-[12px] text-[var(--dash-muted)]">No students found.</li>
           )}
           {!loading &&
-            results.map((student) => {
-              const alloc = allocationByStudent.get(student.id)
+            results.slice(0, 6).map((student) => {
+              const alloc = allocationByStudent.get(String(student.id))
               return (
                 <li key={student.id} role="option">
                   <button
@@ -118,7 +119,21 @@ export default function DashboardSearch({ role }) {
                 </li>
               )
             })}
+          {!loading && results.length > 6 && (
+            <li className="px-3 py-2 text-[11px] text-[var(--dash-muted)]">
+              {results.length - 6} more — type a longer name to narrow results
+            </li>
+          )}
         </ul>
+      )}
+
+      {open && query.trim().length > 0 && query.trim().length < 2 && (
+        <p
+          className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,280px)] rounded-[12px] border px-3 py-2 text-[12px] text-[var(--dash-muted)] shadow-lg"
+          style={{ borderColor: 'var(--dash-border)', background: 'var(--dash-surface)' }}
+        >
+          Type at least 2 letters to find a student
+        </p>
       )}
     </div>
   )

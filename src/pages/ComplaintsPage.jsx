@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
@@ -28,6 +29,7 @@ const toneFor = (status) => {
 
 export default function ComplaintsPage() {
   const session = getSession()
+  const [params] = useSearchParams()
   const isStudent = session?.role === 'STUDENT'
   const canUpdate = ['SUPER_ADMIN', 'ADMIN', 'WARDEN'].includes(session?.role)
   const [items, setItems] = useState([])
@@ -38,7 +40,10 @@ export default function ComplaintsPage() {
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = params.get('status')?.toUpperCase()
+    return STATUSES.includes(status) ? status : 'ALL'
+  })
   const [sortKey, setSortKey] = useState('createdAt')
   const [sortDir, setSortDir] = useState('desc')
 

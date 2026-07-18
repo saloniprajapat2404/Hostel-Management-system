@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import AnimatedNumber from '../AnimatedNumber'
 
 const TONE = {
@@ -9,25 +10,46 @@ const TONE = {
   default: { icon: 'text-[#3B82F6] bg-[#3B82F6]/10' },
 }
 
-function KpiCard({ label, value, tone = 'default', icon: Icon }) {
+function KpiCardContent({ label, value, tone = 'default', icon: Icon }) {
   const styles = TONE[tone] || TONE.default
   const numeric = typeof value === 'number'
 
   return (
-    <div className="dashboard-surface-card p-3 transition-colors hover:bg-[var(--dash-hover)]">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[12px] font-medium text-[var(--dash-muted)]">{label}</p>
-          <p className="dashboard-metric mt-1.5 tabular-nums text-[var(--dash-text)]">
-            {numeric ? <AnimatedNumber value={value} /> : value}
-          </p>
-        </div>
-        {Icon && (
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${styles.icon}`}>
-            <Icon className="h-4 w-4" strokeWidth={2} />
-          </span>
-        )}
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-[12px] font-medium text-[var(--dash-muted)]">{label}</p>
+        <p className="dashboard-metric mt-1.5 tabular-nums text-[var(--dash-text)]">
+          {numeric ? <AnimatedNumber value={value} /> : value}
+        </p>
       </div>
+      {Icon && (
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${styles.icon}`}>
+          <Icon className="h-4 w-4" strokeWidth={2} />
+        </span>
+      )}
+    </div>
+  )
+}
+
+function KpiCard({ label, value, tone = 'default', icon, to }) {
+  const cardClass =
+    'dashboard-surface-card block p-3 transition-all hover:bg-[var(--dash-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40'
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`${cardClass} cursor-pointer hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none`}
+        aria-label={`View ${label}`}
+      >
+        <KpiCardContent label={label} value={value} tone={tone} icon={icon} />
+      </Link>
+    )
+  }
+
+  return (
+    <div className={cardClass}>
+      <KpiCardContent label={label} value={value} tone={tone} icon={icon} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
@@ -20,6 +21,7 @@ import {
 
 export default function AllocationsPage() {
   const session = getSession()
+  const [params] = useSearchParams()
   const canManage = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const [allocations, setAllocations] = useState([])
   const [students, setStudents] = useState([])
@@ -31,7 +33,9 @@ export default function AllocationsPage() {
   const [bedId, setBedId] = useState('')
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(() =>
+    params.get('status')?.toUpperCase() === 'ACTIVE' ? 'ACTIVE' : 'ALL',
+  )
   const [sortKey, setSortKey] = useState('allocatedAt')
   const [sortDir, setSortDir] = useState('desc')
 

@@ -5,7 +5,6 @@ import com.takshak.hostel.entity.Allocation;
 import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.Complaint;
 import com.takshak.hostel.entity.Expense;
-import com.takshak.hostel.entity.Notice;
 import com.takshak.hostel.entity.Room;
 import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.entity.SystemSetting;
@@ -167,30 +166,6 @@ public class DataSeeder implements CommandLineRunner {
             allocationRepository.save(allocation);
         }
 
-        Notice n1 = new Notice();
-        n1.setTitle("Welcome to Takshak Hostel");
-        n1.setBody("Welcome students! Please follow hostel timings and keep rooms clean.");
-        n1.setCreatedById(admin.getId());
-        n1.setCreatedByName(admin.getFullName());
-        n1.setActive(true);
-        noticeRepository.save(n1);
-
-        Notice n2 = new Notice();
-        n2.setTitle("Mess Menu Update");
-        n2.setBody("New weekly mess menu is available at the notice board and mess counter.");
-        n2.setCreatedById(warden.getId());
-        n2.setCreatedByName(warden.getFullName());
-        n2.setActive(true);
-        noticeRepository.save(n2);
-
-        Notice n3 = new Notice();
-        n3.setTitle("Maintenance Window");
-        n3.setBody("Water supply maintenance on Sunday 10 AM – 1 PM. Kindly store water in advance.");
-        n3.setCreatedById(admin.getId());
-        n3.setCreatedByName(admin.getFullName());
-        n3.setActive(true);
-        noticeRepository.save(n3);
-
         AdmissionRequest a1 = new AdmissionRequest();
         a1.setStudentName("Rahul Sharma");
         a1.setEmail("rahul.sharma@applicant.edu");
@@ -250,7 +225,18 @@ public class DataSeeder implements CommandLineRunner {
 
     private void ensureNotifications() {
         removeSeededDemoNotifications();
+        removeSeededDemoNotices();
         ensureExpenses();
+    }
+
+    private void removeSeededDemoNotices() {
+        List<String> demoTitles = List.of(
+                "Welcome to Takshak Hostel",
+                "Mess Menu Update",
+                "Maintenance Window");
+        noticeRepository.findAll().stream()
+                .filter(notice -> demoTitles.contains(notice.getTitle()))
+                .forEach(noticeRepository::delete);
     }
 
     private void removeSeededDemoNotifications() {

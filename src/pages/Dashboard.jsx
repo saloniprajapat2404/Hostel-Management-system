@@ -107,24 +107,28 @@ function buildKpis(stats, role, studentFeeBalance) {
         value: stats.myRoomNumber || '—',
         tone: 'blue',
         icon: Building2,
+        to: '/app/my-room',
       },
       {
         label: 'Fee balance',
         value: `₹${Number(studentFeeBalance || 0).toLocaleString('en-IN')}`,
         tone: 'amber',
         icon: IndianRupee,
+        to: '/app/my-fees',
       },
       {
         label: 'Open complaints',
         value: stats.myOpenComplaints ?? 0,
         tone: 'red',
         icon: MessageSquare,
+        to: '/app/complaints',
       },
       {
         label: 'Active notice',
         value: stats.activeNotices ?? 0,
         tone: 'slate',
         icon: Bell,
+        to: '/app/notices',
       },
     ]
   }
@@ -132,18 +136,48 @@ function buildKpis(stats, role, studentFeeBalance) {
   const kpis = []
 
   if (stats.students !== undefined) {
-    kpis.push({ label: 'Students', value: stats.students, tone: 'blue', icon: GraduationCap })
+    kpis.push({
+      label: 'Students',
+      value: stats.students,
+      tone: 'blue',
+      icon: GraduationCap,
+      to: '/app/users?role=STUDENT',
+    })
   }
   if (stats.occupiedBeds !== undefined) {
-    kpis.push({ label: 'Occupied beds', value: stats.occupiedBeds, tone: 'emerald', icon: Users })
+    kpis.push({
+      label: 'Occupied beds',
+      value: stats.occupiedBeds,
+      tone: 'emerald',
+      icon: Users,
+      to: '/app/allocations?status=ACTIVE',
+    })
   }
   if (stats.vacantBeds !== undefined) {
-    kpis.push({ label: 'Vacant beds', value: stats.vacantBeds, tone: 'emerald', icon: DoorOpen })
+    kpis.push({
+      label: 'Vacant beds',
+      value: stats.vacantBeds,
+      tone: 'emerald',
+      icon: DoorOpen,
+      to: '/app/rooms?status=VACANT',
+    })
   }
   if (stats.openComplaints !== undefined) {
-    kpis.push({ label: 'Open complaints', value: stats.openComplaints, tone: 'red', icon: MessageSquareWarning })
+    kpis.push({
+      label: 'Open complaints',
+      value: stats.openComplaints,
+      tone: 'red',
+      icon: MessageSquareWarning,
+      to: '/app/complaints?status=OPEN',
+    })
   } else if (stats.myOpenComplaints !== undefined) {
-    kpis.push({ label: 'Open complaints', value: stats.myOpenComplaints, tone: 'red', icon: MessageSquareWarning })
+    kpis.push({
+      label: 'Open complaints',
+      value: stats.myOpenComplaints,
+      tone: 'red',
+      icon: MessageSquareWarning,
+      to: '/app/complaints',
+    })
   }
 
   return kpis.slice(0, 4)

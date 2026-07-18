@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
+import { refreshNotifications } from '../utils/notifications'
 import { getSession } from '../utils/auth'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
@@ -8,6 +9,7 @@ import {
   EmptyBlock,
   ErrorBlock,
   Field,
+  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
@@ -28,6 +30,7 @@ export default function NoticesPage() {
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [sortKey, setSortKey] = useState('createdAt')
   const [sortDir, setSortDir] = useState('desc')
 
@@ -57,6 +60,7 @@ export default function NoticesPage() {
       setBody('')
       setShowForm(false)
       await load()
+      refreshNotifications()
     } catch (err) {
       setError(err.message || 'Create failed')
     } finally {
@@ -75,11 +79,16 @@ export default function NoticesPage() {
   }
 
   const displayedItems = useMemo(() => {
-    const filtered = items.filter((item) =>
-      matchesSearch(search, [item.title, item.body, item.createdByName]),
-    )
+    const filtered = items.filter((item) => {
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && item.active !== false) ||
+        (statusFilter === 'INACTIVE' && item.active === false)
+      const matchesQuery = matchesSearch(search, [item.title, item.body, item.createdByName])
+      return matchesStatus && matchesQuery
+    })
     return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
-  }, [items, search, sortKey, sortDir])
+  }, [items, search, statusFilter, sortKey, sortDir])
 
   const handleSort = (key) => {
     const next = toggleSort(sortKey, sortDir, key)
@@ -100,7 +109,7 @@ export default function NoticesPage() {
         subtitle="Hostel announcements and updates."
         actions={
           canCreate ? (
-            <ActionButton onClick={() => setShowForm(true)}>New notice</ActionButton>
+            <ActionButton onClick={() => setShowForm(true)}>New Notice</ActionButton>
           ) : null
         }
       />
@@ -110,7 +119,7 @@ export default function NoticesPage() {
 
       {showForm && canCreate && (
         <Card className="mb-6">
-          <h2 className="mb-4 text-lg font-semibold">Create notice</h2>
+          <h2 className="mb-4 text-lg font-semibold">Create Notice</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <Field label="Title">
               <input className={fieldClass} required value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -131,16 +140,21 @@ export default function NoticesPage() {
         </Card>
       )}
 
-      {!loading && items.length === 0 && <EmptyBlock message="No notice yet." />}
+      {!loading && items.length === 0 && <EmptyBlock message="No Notice yet." />}
 
       {!loading && items.length > 0 && (
         <>
           <TableToolbar>
             <SearchInput value={search} onChange={setSearch} placeholder="Search title, body, author…" />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
+              <option value="ALL">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </FilterSelect>
           </TableToolbar>
 
           {displayedItems.length === 0 ? (
-            <EmptyBlock message="No notice matches your search." />
+            <EmptyBlock message="No Notice matches your filters." />
           ) : (
             <div className="space-y-4">
               {displayedItems.map((n) => (
@@ -162,7 +176,7 @@ export default function NoticesPage() {
             </div>
           )}
 
-          {displayedItems.length > 0 && canDelete && (
+          {displayedItems.length > 0 && (
             <div className="mt-6">
               <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
                 {displayedItems.map((n) => (

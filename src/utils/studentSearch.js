@@ -17,10 +17,10 @@ export async function loadStudentDirectory(role) {
   const allocationByStudent = new Map()
   ;(allocations || [])
     .filter((a) => a.active)
-    .forEach((a) => allocationByStudent.set(a.studentId, a))
+    .forEach((a) => allocationByStudent.set(String(a.studentId), a))
 
   const feesByStudent = new Map()
-  ;(feeSummaries || []).forEach((f) => feesByStudent.set(f.studentId, f))
+  ;(feeSummaries || []).forEach((f) => feesByStudent.set(String(f.studentId), f))
 
   return {
     students: students || [],
@@ -47,8 +47,8 @@ export function filterStudents(students, query, limit = 8) {
 export function buildStudentProfile(student, allocationByStudent, feesByStudent) {
   if (!student) return null
 
-  const allocation = allocationByStudent.get(student.id)
-  const fees = feesByStudent.get(student.id)
+  const allocation = allocationByStudent.get(String(student.id))
+  const fees = feesByStudent.get(String(student.id))
 
   return {
     ...student,
@@ -59,10 +59,10 @@ export function buildStudentProfile(student, allocationByStudent, feesByStudent)
 
 export async function fetchStudentFullProfile(studentId, role) {
   const canSeeFees = role === 'ADMIN' || role === 'SUPER_ADMIN'
-  const id = Number(studentId)
+  const id = String(studentId)
 
   const students = (await apiGet('/api/users?role=STUDENT')) || []
-  const student = students.find((s) => s.id === id)
+  const student = students.find((s) => String(s.id) === id)
   if (!student) {
     throw new Error('Student not found')
   }
@@ -74,10 +74,10 @@ export async function fetchStudentFullProfile(studentId, role) {
     canSeeFees ? apiGet(`/api/fees/students/${id}`).catch(() => []) : Promise.resolve([]),
   ])
 
-  const studentAllocations = (allocations || []).filter((a) => a.studentId === id)
+  const studentAllocations = (allocations || []).filter((a) => String(a.studentId) === id)
   const allocation = studentAllocations.find((a) => a.active) || studentAllocations[0] || null
-  const studentComplaints = (complaints || []).filter((c) => c.studentId === id)
-  const fees = (feeSummaries || []).find((f) => f.studentId === id) || null
+  const studentComplaints = (complaints || []).filter((c) => String(c.studentId) === id)
+  const fees = (feeSummaries || []).find((f) => String(f.studentId) === id) || null
 
   return {
     student,

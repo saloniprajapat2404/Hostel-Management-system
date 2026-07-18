@@ -203,6 +203,7 @@ export default function AppShell() {
   const { hostelName, systemName } = useHostelConfig()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const items = useMemo(() => ROLE_NAV[user?.role] || ROLE_NAV.STUDENT, [user?.role])
+  const isDashboard = location.pathname === '/app' || location.pathname === '/app/'
 
   const handleSignOut = () => {
     clearSession()
@@ -290,7 +291,7 @@ export default function AppShell() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell variant="shell" />
+            {!isDashboard && <NotificationBell variant="shell" />}
             <DarkModeToggle dark={dark} onToggle={toggle} label="Dark mode" />
           </div>
         </header>

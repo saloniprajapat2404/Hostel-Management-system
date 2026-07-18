@@ -30,6 +30,10 @@ public class NoticeService {
     }
 
     public List<NoticeDto> list() {
+        Role role = SecurityUtils.currentUser().getRole();
+        if (role == Role.ADMIN || role == Role.SUPER_ADMIN) {
+            return noticeRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
+        }
         return noticeRepository.findByActiveTrueOrderByCreatedAtDesc().stream().map(this::toDto).toList();
     }
 
@@ -42,14 +46,21 @@ public class NoticeService {
         notice.setCreatedByName(actor.getFullName());
         notice.setActive(true);
         Notice saved = noticeRepository.save(notice);
-        userRepository.findByRoleIn(List.of(Role.STUDENT, Role.WARDEN)).stream()
+        userRepository.findByRoleIn(List.of(Role.STUDENT, Role.WARDEN, Role.ADMIN, Role.SUPER_ADMIN)).stream()
                 .filter(User::isActive)
+                .filter(user -> !user.getId().equals(actor.getId()))
                 .forEach(user -> notificationService.notifyUser(
                         user,
                         "New notice",
                         saved.getTitle(),
                         NotificationType.NOTICE,
                         "/app/notices"));
+        notificationService.notifyUser(
+                actor,
+                "Notice published",
+                saved.getTitle() + " is now live",
+                NotificationType.NOTICE,
+                "/app/notices");
         return toDto(saved);
     }
 

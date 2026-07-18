@@ -8,6 +8,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { apiGet, apiPatch } from '../../utils/api'
+import { NOTIFICATIONS_REFRESH } from '../../utils/notifications'
 
 const TYPE_META = {
   ADMISSION: { icon: ClipboardList, dot: '#3B82F6' },
@@ -37,17 +38,25 @@ function formatWhen(iso) {
   }
 }
 
-function NotificationRow({ item, onOpen }) {
+function NotificationRow({ item, onOpen, variant = 'dashboard' }) {
   const meta = TYPE_META[item.type] || TYPE_META.SYSTEM
   const Icon = meta.icon
+  const isShell = variant === 'shell'
 
   return (
     <button
       type="button"
       onClick={() => onOpen(item)}
       className={[
-        'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--dash-hover)]',
-        !item.read ? 'bg-[color-mix(in_srgb,var(--dash-hover)_60%,transparent)]' : '',
+        'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
+        isShell
+          ? 'hover:bg-slate-50 dark:hover:bg-slate-800'
+          : 'hover:bg-[var(--dash-hover)]',
+        !item.read
+          ? isShell
+            ? 'bg-slate-50 dark:bg-slate-800/60'
+            : 'bg-[color-mix(in_srgb,var(--dash-hover)_60%,transparent)]'
+          : '',
       ].join(' ')}
     >
       <span
@@ -58,15 +67,35 @@ function NotificationRow({ item, onOpen }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
-          <span className="truncate text-[13px] font-medium text-[var(--dash-text)]">{item.title}</span>
+          <span
+            className={[
+              'truncate text-[13px] font-medium',
+              isShell ? 'text-slate-900 dark:text-white' : 'text-[var(--dash-text)]',
+            ].join(' ')}
+          >
+            {item.title}
+          </span>
           {!item.read && (
             <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#3B82F6]" aria-hidden="true" />
           )}
         </span>
         {item.message && (
-          <span className="mt-0.5 block truncate text-[12px] text-[var(--dash-muted)]">{item.message}</span>
+          <span
+            className={[
+              'mt-0.5 block truncate text-[12px]',
+              isShell ? 'text-slate-500 dark:text-slate-400' : 'text-[var(--dash-muted)]',
+            ].join(' ')}
+          >
+            {item.message}
+          </span>
         )}
-        <time className="mt-1 block text-[11px] tabular-nums text-[var(--dash-muted)]" dateTime={item.createdAt}>
+        <time
+          className={[
+            'mt-1 block text-[11px] tabular-nums',
+            isShell ? 'text-slate-400 dark:text-slate-500' : 'text-[var(--dash-muted)]',
+          ].join(' ')}
+          dateTime={item.createdAt}
+        >
           {formatWhen(item.createdAt)}
         </time>
       </span>
@@ -101,8 +130,13 @@ export default function NotificationBell({ variant = 'dashboard' }) {
 
   useEffect(() => {
     load()
-    const interval = setInterval(load, 60000)
-    return () => clearInterval(interval)
+    const interval = setInterval(load, 30000)
+    const onRefresh = () => load()
+    window.addEventListener(NOTIFICATIONS_REFRESH, onRefresh)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener(NOTIFICATIONS_REFRESH, onRefresh)
+    }
   }, [load])
 
   useEffect(() => {
@@ -154,6 +188,8 @@ export default function NotificationBell({ variant = 'dashboard' }) {
       ? 'dashboard-icon-btn relative shrink-0'
       : 'relative rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
 
+  const isShell = variant === 'shell'
+
   return (
     <div className="relative">
       <button
@@ -178,20 +214,39 @@ export default function NotificationBell({ variant = 'dashboard' }) {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 z-50 mt-2 w-[min(92vw,360px)] overflow-hidden rounded-[14px] border shadow-2xl"
-          style={{
-            borderColor: 'var(--dash-border, rgb(226 232 240))',
-            background: 'var(--dash-surface, white)',
-            boxShadow: '0 20px 48px rgba(15, 23, 42, 0.18)',
-          }}
+          className={[
+            'absolute right-0 z-50 mt-2 w-[min(92vw,360px)] overflow-hidden rounded-[14px] border shadow-2xl',
+            isShell
+              ? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
+              : '',
+          ].join(' ')}
+          style={
+            isShell
+              ? { boxShadow: '0 20px 48px rgba(15, 23, 42, 0.18)' }
+              : {
+                  borderColor: 'var(--dash-border, rgb(226 232 240))',
+                  background: 'var(--dash-surface, white)',
+                  boxShadow: '0 20px 48px rgba(15, 23, 42, 0.18)',
+                }
+          }
           role="dialog"
           aria-label="Notifications"
         >
           <div
-            className="flex items-center justify-between border-b px-3 py-2.5"
-            style={{ borderColor: 'var(--dash-border-subtle, rgb(226 232 240))' }}
+            className={[
+              'flex items-center justify-between border-b px-3 py-2.5',
+              isShell ? 'border-slate-200 dark:border-slate-700' : '',
+            ].join(' ')}
+            style={isShell ? undefined : { borderColor: 'var(--dash-border-subtle, rgb(226 232 240))' }}
           >
-            <p className="text-[14px] font-semibold text-[var(--dash-text, rgb(15 23 42))]">Notifications</p>
+            <p
+              className={[
+                'text-[14px] font-semibold',
+                isShell ? 'text-slate-900 dark:text-white' : 'text-[var(--dash-text, rgb(15 23 42))]',
+              ].join(' ')}
+            >
+              Notifications
+            </p>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -205,18 +260,33 @@ export default function NotificationBell({ variant = 'dashboard' }) {
 
           <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {loading && items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[13px] text-[var(--dash-muted, rgb(100 116 139))]">
+              <p
+                className={[
+                  'px-3 py-6 text-center text-[13px]',
+                  isShell ? 'text-slate-500 dark:text-slate-400' : 'text-[var(--dash-muted, rgb(100 116 139))]',
+                ].join(' ')}
+              >
                 Loading…
               </p>
             ) : items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[13px] text-[var(--dash-muted, rgb(100 116 139))]">
+              <p
+                className={[
+                  'px-3 py-6 text-center text-[13px]',
+                  isShell ? 'text-slate-500 dark:text-slate-400' : 'text-[var(--dash-muted, rgb(100 116 139))]',
+                ].join(' ')}
+              >
                 No notifications yet.
               </p>
             ) : (
-              <ul className="divide-y divide-[color:var(--dash-border-subtle,rgb(226_232_240))]">
+              <ul
+                className={[
+                  'divide-y',
+                  isShell ? 'divide-slate-200 dark:divide-slate-700' : 'divide-[color:var(--dash-border-subtle,rgb(226_232_240))]',
+                ].join(' ')}
+              >
                 {items.map((item) => (
                   <li key={item.id}>
-                    <NotificationRow item={item} onOpen={handleOpen} />
+                    <NotificationRow item={item} onOpen={handleOpen} variant={variant} />
                   </li>
                 ))}
               </ul>
@@ -224,8 +294,11 @@ export default function NotificationBell({ variant = 'dashboard' }) {
           </div>
 
           <div
-            className="border-t px-3 py-2 text-right"
-            style={{ borderColor: 'var(--dash-border-subtle, rgb(226 232 240))' }}
+            className={[
+              'border-t px-3 py-2 text-right',
+              isShell ? 'border-slate-200 dark:border-slate-700' : '',
+            ].join(' ')}
+            style={isShell ? undefined : { borderColor: 'var(--dash-border-subtle, rgb(226 232 240))' }}
           >
             <Link
               to="/app/notices"
