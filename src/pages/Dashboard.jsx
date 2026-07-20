@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import {
   Bell,
   Building2,
@@ -18,7 +17,6 @@ import DashboardHero from '../components/dashboard/enterprise/DashboardHero'
 import CompactKpiGrid from '../components/dashboard/enterprise/CompactKpiGrid'
 import QuickActionsBar from '../components/dashboard/enterprise/QuickActionsBar'
 import AddUserDashboardPanel from '../components/dashboard/enterprise/AddUserDashboardPanel'
-import ExpensesDashboardPanel from '../components/dashboard/enterprise/ExpensesDashboardPanel'
 import RecentActivityTimeline from '../components/dashboard/enterprise/RecentActivityTimeline'
 import StudentHistoryPanel from '../components/dashboard/enterprise/StudentHistoryPanel'
 import FeeCollectionPanel from '../components/dashboard/enterprise/FeeCollectionPanel'
@@ -79,8 +77,6 @@ export default function Dashboard() {
   const [activityLoading, setActivityLoading] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [addUserOpen, setAddUserOpen] = useState(false)
-  const [expensesOpen, setExpensesOpen] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
   const [error, setError] = useState('')
   const canManageFinance = quickAccessRole === 'ADMIN' || quickAccessRole === 'SUPER_ADMIN'
 
@@ -201,14 +197,6 @@ export default function Dashboard() {
   }, [loadStats, loadSecondaryData])
 
   useEffect(() => {
-    if (searchParams.get('panel') === 'expenses' && canManageFinance) {
-      setExpensesOpen(true)
-      setAddUserOpen(false)
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, setSearchParams, canManageFinance])
-
-  useEffect(() => {
     let alive = true
     refreshSessionUser().then((fresh) => {
       if (alive && fresh) setUser(fresh)
@@ -257,21 +245,10 @@ export default function Dashboard() {
           <QuickActionsBar
             role={quickAccessRole}
             addUserOpen={addUserOpen}
-            onAddUserToggle={() => {
-              setAddUserOpen((open) => !open)
-              setExpensesOpen(false)
-            }}
-            expensesOpen={expensesOpen}
-            onExpensesToggle={() => {
-              setExpensesOpen((open) => !open)
-              setAddUserOpen(false)
-            }}
+            onAddUserToggle={() => setAddUserOpen((open) => !open)}
           />
           {canManageFinance && (
             <AddUserDashboardPanel open={addUserOpen} onClose={() => setAddUserOpen(false)} />
-          )}
-          {canManageFinance && (
-            <ExpensesDashboardPanel open={expensesOpen} onClose={() => setExpensesOpen(false)} />
           )}
 
           {!statsLoading && stats && (

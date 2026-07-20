@@ -57,7 +57,7 @@ function StudentHistoryPanel({ role, history, loading = false }) {
     () => SECTIONS.filter((section) => section.roles.includes(role)),
     [role],
   )
-  const [openKey, setOpenKey] = useState(sections[0]?.key || null)
+  const [openKey, setOpenKey] = useState(null)
 
   const totalEvents = useMemo(
     () => sections.reduce((sum, { key }) => sum + (history?.[key]?.length || 0), 0),

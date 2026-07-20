@@ -61,20 +61,36 @@ const ACTIONS = {
     icon: MessageSquarePlus,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'],
   },
+  expenses: {
+    label: 'Expenses',
+    hint: 'Record and view hostel operating expenses',
+    to: '/app/expenses',
+    icon: Receipt,
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+  },
 }
+
+/** Display order for quick access links (Expenses after Register Complaint). */
+const ACTION_ORDER = [
+  'rooms',
+  'residents',
+  'allocateRoom',
+  'collectFee',
+  'myFees',
+  'addNotice',
+  'registerComplaint',
+  'expenses',
+]
 
 const iconClass =
   'h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#3B82F6] motion-reduce:transform-none'
 
-function QuickActionsBar({
-  role,
-  addUserOpen = false,
-  onAddUserToggle,
-  expensesOpen = false,
-  onExpensesToggle,
-}) {
+function QuickActionsBar({ role, addUserOpen = false, onAddUserToggle }) {
   const items = useMemo(
-    () => Object.values(ACTIONS).filter((action) => action.roles.includes(role)),
+    () =>
+      ACTION_ORDER.map((key) => ACTIONS[key])
+        .filter(Boolean)
+        .filter((action) => action.roles.includes(role)),
     [role],
   )
   const canManageFinance = role === 'ADMIN' || role === 'SUPER_ADMIN'
@@ -85,22 +101,17 @@ function QuickActionsBar({
     <section aria-label="Quick access">
       <h3 className="dashboard-section-label">Quick access</h3>
       <div className="flex flex-wrap items-center gap-2">
-        {canManageFinance && onExpensesToggle && (
-          <button
-            type="button"
-            onClick={onExpensesToggle}
-            aria-expanded={expensesOpen}
-            aria-controls="dashboard-expenses"
-            title="Record and view hostel expenses"
-            className={[
-              'dashboard-quick-action group',
-              expensesOpen ? 'dashboard-quick-action-active' : '',
-            ].join(' ')}
+        {items.map(({ label, hint, to, icon: Icon }) => (
+          <Link
+            key={to + label}
+            to={to}
+            title={hint || label}
+            className="dashboard-quick-action group"
           >
-            <Receipt className={iconClass} strokeWidth={2} />
-            <span className="whitespace-nowrap">Expenses</span>
-          </button>
-        )}
+            <Icon className={iconClass} strokeWidth={2} />
+            <span className="whitespace-nowrap">{label}</span>
+          </Link>
+        ))}
 
         {canManageFinance && onAddUserToggle && (
           <button
@@ -118,18 +129,6 @@ function QuickActionsBar({
             <span className="whitespace-nowrap">Add User</span>
           </button>
         )}
-
-        {items.map(({ label, hint, to, icon: Icon }) => (
-          <Link
-            key={to + label}
-            to={to}
-            title={hint || label}
-            className="dashboard-quick-action group"
-          >
-            <Icon className={iconClass} strokeWidth={2} />
-            <span className="whitespace-nowrap">{label}</span>
-          </Link>
-        ))}
       </div>
     </section>
   )
