@@ -70,8 +70,9 @@ function CardPattern() {
   )
 }
 
-export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle, children }) {
+export function ToggleSection({ id, title, subtitle, icon, badge, tone = 'default', enhanced = false, open, onToggle, children }) {
   const panelId = useId()
+  const styles = TONE_STYLES[tone] || TONE_STYLES.default
 
   return (
     <motion.div
@@ -79,7 +80,11 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="dashboard-glass overflow-hidden rounded-[18px] border shadow-lg"
+      className={[
+        'dashboard-glass overflow-hidden rounded-[18px] border shadow-lg transition-all duration-200',
+        enhanced ? 'dashboard-history-section' : '',
+        open && enhanced ? 'dashboard-history-section-open' : '',
+      ].join(' ')}
       style={{ borderColor: 'var(--dash-border)', boxShadow: `0 12px 28px var(--dash-shadow)` }}
     >
       <button
@@ -88,26 +93,45 @@ export function ToggleSection({ id, title, subtitle, icon, badge, open, onToggle
         aria-expanded={open}
         aria-controls={panelId}
         onClick={onToggle}
-        className="group flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left transition-all duration-300 hover:bg-[var(--dash-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-inset sm:px-5"
+        className={[
+          'group flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left transition-all duration-200',
+          'hover:bg-[var(--dash-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-inset sm:px-5',
+          enhanced ? 'dashboard-history-trigger' : '',
+        ].join(' ')}
       >
         {icon && (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#3B82F6]/20 to-[#06B6D4]/10 text-[#3B82F6] shadow-md shadow-[#3B82F6]/10 transition-transform duration-300 group-hover:scale-105 [&_svg]:h-4 [&_svg]:w-4">
-            {icon}
+          <span
+            className={[
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] shadow-md transition-all duration-200',
+              'group-hover:scale-110 group-hover:shadow-lg motion-reduce:transform-none',
+              styles.icon,
+              enhanced ? styles.glow : 'bg-gradient-to-br from-[#3B82F6]/20 to-[#06B6D4]/10 text-[#3B82F6] shadow-[#3B82F6]/10',
+            ].join(' ')}
+          >
+            <span className="[&_svg]:h-4 [&_svg]:w-4">{icon}</span>
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold leading-snug text-[var(--dash-text)]">{title}</span>
+          <span className="block text-[15px] font-semibold leading-snug text-[var(--dash-text)] transition-colors group-hover:text-[#3B82F6]">
+            {title}
+          </span>
           {subtitle && (
             <span className="mt-0.5 block text-xs font-medium text-[var(--dash-muted)]">{subtitle}</span>
           )}
         </span>
         {badge != null && (
-          <span className="hidden shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium text-[var(--dash-muted)] sm:inline-flex" style={{ borderColor: 'var(--dash-border)', background: 'var(--dash-hover)' }}>
+          <span
+            className={[
+              'hidden shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold tabular-nums sm:inline-flex',
+              metaToneClass[tone] || metaToneClass.default,
+            ].join(' ')}
+            style={{ borderColor: 'var(--dash-border-subtle)' }}
+          >
             {badge}
           </span>
         )}
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--dash-muted)] transition-transform duration-300 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-[var(--dash-muted)] transition-transform duration-300 group-hover:text-[#3B82F6] motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
@@ -190,6 +214,23 @@ export function ProgressBar({ value, max, label }) {
   )
 }
 
+export function KpiGridSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="h-[88px] animate-pulse rounded-[16px] border"
+          style={{
+            borderColor: 'var(--dash-border)',
+            background: 'color-mix(in srgb, var(--dash-surface) 80%, transparent)',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function DashboardSkeleton() {
   return (
     <div className="space-y-6">
@@ -222,7 +263,7 @@ export function DashboardSkeleton() {
   )
 }
 
-export function DetailList({ items, loading, error, emptyLabel = 'No records found.' }) {
+export function DetailList({ items, loading, error, emptyLabel = 'No records found.', interactive = false }) {
   if (loading) {
     return (
       <div className="space-y-2 py-1">
@@ -261,18 +302,29 @@ export function DetailList({ items, loading, error, emptyLabel = 'No records fou
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.03, duration: 0.25 }}
-          className="flex items-start justify-between gap-3 rounded-[14px] border px-4 py-3 transition-colors duration-200 hover:bg-[var(--dash-hover)]"
-          style={{ borderColor: 'var(--dash-border-subtle)', background: 'color-mix(in srgb, var(--dash-surface-muted) 50%, transparent)' }}
+          className={[
+            'group flex items-start justify-between gap-3 rounded-[14px] border px-4 py-3 transition-all duration-200',
+            interactive
+              ? 'dashboard-history-item cursor-default'
+              : 'hover:bg-[var(--dash-hover)]',
+          ].join(' ')}
+          style={
+            interactive
+              ? undefined
+              : { borderColor: 'var(--dash-border-subtle)', background: 'color-mix(in srgb, var(--dash-surface-muted) 50%, transparent)' }
+          }
         >
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-[var(--dash-text)]">{item.primary}</p>
+            <p className="truncate text-[15px] font-medium text-[var(--dash-text)] transition-colors group-hover:text-[#3B82F6]">
+              {item.primary}
+            </p>
             {item.secondary && (
               <p className="mt-0.5 truncate text-[13px] text-[var(--dash-muted)]">{item.secondary}</p>
             )}
           </div>
           {item.meta && (
             <span
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${metaToneClass[item.tone] || metaToneClass.default}`}
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-transform duration-200 group-hover:scale-105 ${metaToneClass[item.tone] || metaToneClass.default}`}
             >
               {item.meta}
             </span>

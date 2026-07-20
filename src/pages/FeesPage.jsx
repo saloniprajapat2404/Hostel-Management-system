@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IndianRupee, UserRound, Wallet } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { ArrowLeft, IndianRupee, UserRound } from 'lucide-react'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import {
@@ -22,9 +23,6 @@ import { sortRows, toggleSort, matchesSearch } from '../utils/tableHelpers'
 const PAYMENT_METHODS = [
   { value: 'ONLINE', label: 'Online' },
   { value: 'CASH', label: 'Cash' },
-  { value: 'UPI', label: 'UPI' },
-  { value: 'BANK_TRANSFER', label: 'Bank transfer' },
-  { value: 'CARD', label: 'Card' },
 ]
 
 const FEE_TYPES = ['Hostel Fee', 'Mess Fee', 'Security Deposit', 'Late Fine', 'Other']
@@ -66,6 +64,8 @@ function feeTone(status) {
 }
 
 function methodLabel(method) {
+  if (method === 'CASH') return 'Cash'
+  if (method === 'ONLINE' || method === 'UPI' || method === 'BANK_TRANSFER' || method === 'CARD') return 'Online'
   return PAYMENT_METHODS.find((m) => m.value === method)?.label || method || '—'
 }
 
@@ -89,13 +89,15 @@ function StatCard({ label, value, tone = 'slate', hint }) {
 export default function FeesPage() {
   const role = getSession()?.role
   const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN'
-  const isSuperAdmin = role === 'SUPER_ADMIN'
+  const canManageExpenses = canManage
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const selectedId = searchParams.get('student')
 
   const [overview, setOverview] = useState(null)
   const [students, setStudents] = useState([])
   const [expenses, setExpenses] = useState([])
   const [totalExpenses, setTotalExpenses] = useState(0)
-  const [selectedId, setSelectedId] = useState(null)
   const [studentFees, setStudentFees] = useState([])
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -114,23 +116,62 @@ export default function FeesPage() {
   const [expenseSortKey, setExpenseSortKey] = useState('expenseDate')
   const [expenseSortDir, setExpenseSortDir] = useState('desc')
   const [expenseSearch, setExpenseSearch] = useState('')
+  const [expenseError, setExpenseError] = useState('')
+
+  const resetDetailForms = useCallback(() => {
+    setShowFeeForm(false)
+    setFeeForm(emptyFeeForm)
+    setPaymentFeeId(null)
+    setPaymentForm(emptyPaymentForm)
+  }, [])
+
+  const selectStudent = useCallback(
+    (studentId) => {
+      if (String(studentId) === String(selectedId)) return
+      resetDetailForms()
+      setSearchParams({ student: String(studentId) })
+    },
+    [selectedId, resetDetailForms, setSearchParams],
+  )
+
+  const goBackToList = useCallback(() => {
+    resetDetailForms()
+    setSearchParams({})
+  }, [resetDetailForms, setSearchParams])
+
+  useEffect(() => {
+    resetDetailForms()
+  }, [selectedId, resetDetailForms])
 
   const refreshOverview = useCallback(async () => {
-    const requests = [
+    const [overviewResult, studentsResult] = await Promise.all([
       apiGet('/api/fees/overview'),
       apiGet('/api/fees/students'),
-    ]
-    if (isSuperAdmin) {
-      requests.push(apiGet('/api/expenses'), apiGet('/api/expenses/total'))
+    ])
+    setOverview(overviewResult)
+    setStudents(studentsResult || [])
+
+    if (!canManageExpenses) {
+      setExpenses([])
+      setTotalExpenses(0)
+      setExpenseError('')
+      return
     }
-    const results = await Promise.all(requests)
-    setOverview(results[0])
-    setStudents(results[1] || [])
-    if (isSuperAdmin) {
-      setExpenses(results[2] || [])
-      setTotalExpenses(Number(results[3]?.totalExpenses || 0))
+
+    setExpenseError('')
+    try {
+      const [expenseList, total] = await Promise.all([
+        apiGet('/api/expenses'),
+        apiGet('/api/expenses/total'),
+      ])
+      setExpenses(expenseList || [])
+      setTotalExpenses(Number(total?.totalExpenses || 0))
+    } catch (err) {
+      setExpenses([])
+      setTotalExpenses(0)
+      setExpenseError(err.message || 'Could not load expenses')
     }
-  }, [isSuperAdmin])
+  }, [canManageExpenses])
 
   const refreshStudentFees = useCallback(async (studentId) => {
     if (!studentId) return
@@ -257,9 +298,243 @@ export default function FeesPage() {
   ]
 
   const selectedStudent = useMemo(
-    () => students.find((s) => s.studentId === selectedId) || null,
+    () => students.find((s) => String(s.studentId) === String(selectedId)) || null,
     [students, selectedId],
   )
+
+  const renderStudentDetail = () => {
+    if (!selectedId) return null
+
+    if (!selectedStudent) {
+      return (
+        <Card>
+          <div className="mb-4">
+            <ActionButton variant="ghost" onClick={goBackToList}>
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              Back to all students
+            </ActionButton>
+          </div>
+          <EmptyBlock message="Student not found or no longer available." />
+        </Card>
+      )
+    }
+
+    return (
+      <Card>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+            <ActionButton variant="ghost" onClick={goBackToList} className="shrink-0 self-start">
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              Back to all students
+            </ActionButton>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {selectedStudent.fullName}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {selectedStudent.studentCode ? `${selectedStudent.studentCode} · ` : ''}
+                {selectedStudent.email}
+              </p>
+            </div>
+          </div>
+          <ActionButton onClick={() => setShowFeeForm(true)}>Add fee</ActionButton>
+        </div>
+
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <StatCard label="Total fees" value={formatCurrency(selectedStudent.totalFees)} />
+          <StatCard label="Paid" value={formatCurrency(selectedStudent.totalPaid)} tone="green" />
+          <StatCard label="Balance" value={formatCurrency(selectedStudent.balance)} tone="amber" />
+        </div>
+
+        {showFeeForm && (
+          <form onSubmit={handleCreateFee} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">New fee record</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Fee type">
+                <select
+                  className={fieldClass}
+                  value={feeForm.feeType}
+                  onChange={(e) => setFeeForm({ ...feeForm, feeType: e.target.value })}
+                >
+                  {FEE_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Academic year">
+                <input
+                  className={fieldClass}
+                  required
+                  value={feeForm.academicYear}
+                  onChange={(e) => setFeeForm({ ...feeForm, academicYear: e.target.value })}
+                />
+              </Field>
+              <Field label="Total amount (₹)">
+                <input
+                  type="number"
+                  min="1"
+                  className={fieldClass}
+                  required
+                  value={feeForm.totalAmount}
+                  onChange={(e) => setFeeForm({ ...feeForm, totalAmount: e.target.value })}
+                />
+              </Field>
+              <Field label="Due date">
+                <input
+                  type="date"
+                  className={fieldClass}
+                  value={feeForm.dueDate}
+                  onChange={(e) => setFeeForm({ ...feeForm, dueDate: e.target.value })}
+                />
+              </Field>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <ActionButton type="submit" disabled={saving}>
+                {saving ? 'Saving…' : 'Create fee'}
+              </ActionButton>
+              <ActionButton variant="ghost" onClick={() => setShowFeeForm(false)}>Cancel</ActionButton>
+            </div>
+          </form>
+        )}
+
+        {detailLoading && <LoadingBlock label="Loading fee details…" />}
+
+        {!detailLoading && studentFees.length === 0 && (
+          <EmptyBlock message="No fee records for this student yet." />
+        )}
+
+        {!detailLoading && studentFees.length > 0 && (
+          <div className="space-y-4">
+            {studentFees.map((fee) => (
+              <div
+                key={fee.id}
+                className="rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+              >
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4 text-primary" />
+                      <p className="font-semibold text-slate-900 dark:text-white">{fee.feeType}</p>
+                      <StatusBadge tone={feeTone(fee.status)}>{fee.status}</StatusBadge>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {fee.academicYear}
+                      {fee.dueDate ? ` · Due ${new Date(fee.dueDate).toLocaleDateString('en-IN')}` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="text-slate-500">Total {formatCurrency(fee.totalAmount)}</p>
+                    <p className="text-emerald-700 dark:text-emerald-300">Paid {formatCurrency(fee.paidAmount)}</p>
+                    <p className="font-medium text-amber-700 dark:text-amber-300">
+                      Balance {formatCurrency(fee.balanceAmount)}
+                    </p>
+                  </div>
+                </div>
+
+                {fee.balanceAmount > 0 && (
+                  <div className="mb-3">
+                    {paymentFeeId === fee.id ? (
+                      <form onSubmit={handleRecordPayment} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Record payment
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <input
+                            type="number"
+                            min="1"
+                            max={fee.balanceAmount}
+                            className={fieldClass}
+                            placeholder="Amount"
+                            required
+                            value={paymentForm.amount}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                          />
+                          <select
+                            className={fieldClass}
+                            value={paymentForm.method}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                          >
+                            {PAYMENT_METHODS.map((m) => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            className={fieldClass}
+                            placeholder="Reference / note"
+                            value={paymentForm.referenceNote}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, referenceNote: e.target.value })}
+                          />
+                        </div>
+                        <div className="mt-2 flex gap-2">
+                          <ActionButton type="submit" disabled={saving}>
+                            {saving ? 'Saving…' : 'Save payment'}
+                          </ActionButton>
+                          <ActionButton
+                            variant="ghost"
+                            onClick={() => {
+                              setPaymentFeeId(null)
+                              setPaymentForm(emptyPaymentForm)
+                            }}
+                          >
+                            Cancel
+                          </ActionButton>
+                        </div>
+                      </form>
+                    ) : (
+                      <ActionButton variant="success" onClick={() => setPaymentFeeId(fee.id)}>
+                        Record payment
+                      </ActionButton>
+                    )}
+                  </div>
+                )}
+
+                {(fee.payments?.length ?? 0) > 0 ? (
+                  <div className="overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="bg-slate-50 dark:bg-slate-800/60">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold text-slate-500">Date</th>
+                          <th className="px-3 py-2 font-semibold text-slate-500">Amount</th>
+                          <th className="px-3 py-2 font-semibold text-slate-500">Method</th>
+                          <th className="px-3 py-2 font-semibold text-slate-500">Reference</th>
+                          <th className="px-3 py-2 font-semibold text-slate-500">Recorded by</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {fee.payments.map((payment) => (
+                          <tr key={payment.id}>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                              {payment.paidAt
+                                ? new Date(payment.paidAt).toLocaleString('en-IN')
+                                : '—'}
+                            </td>
+                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">
+                              {formatCurrency(payment.amount)}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                              {methodLabel(payment.method)}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                              {payment.referenceNote || '—'}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                              {payment.recordedByName || '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">No payments recorded yet.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    )
+  }
 
   const handleCreateFee = async (e) => {
     e.preventDefault()
@@ -350,11 +625,7 @@ export default function FeesPage() {
     <div>
       <PageHeader
         title="Fees management"
-        subtitle={
-          isSuperAdmin
-            ? 'Track student fees, payments, and hostel expenses (Super Admin).'
-            : 'Track student fee structure, payments, deposits, and outstanding balances.'
-        }
+        subtitle="Track student fees, payments, and hostel operating expenses."
       />
 
       {error && (
@@ -374,7 +645,7 @@ export default function FeesPage() {
 
       {!loading && overview && (
         <>
-          <div className={`mb-6 grid gap-3 sm:grid-cols-2 ${isSuperAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+          <div className={`mb-6 grid gap-3 sm:grid-cols-2 ${canManageExpenses ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
             <StatCard
               label="Total students"
               value={overview.totalStudents}
@@ -399,7 +670,7 @@ export default function FeesPage() {
               tone="teal"
               hint="Students fully paid"
             />
-            {isSuperAdmin && (
+            {canManageExpenses && (
               <StatCard
                 label="Total expenses"
                 value={formatCurrency(totalExpenses)}
@@ -409,7 +680,7 @@ export default function FeesPage() {
             )}
           </div>
 
-          {isSuperAdmin && (
+          {canManageExpenses && (
             <Card className="mb-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -420,6 +691,12 @@ export default function FeesPage() {
                 </div>
                 <ActionButton onClick={() => setShowExpenseForm(true)}>Add expense</ActionButton>
               </div>
+
+              {expenseError && (
+                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                  {expenseError}
+                </p>
+              )}
 
               {showExpenseForm && (
                 <form onSubmit={handleCreateExpense} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
@@ -515,13 +792,18 @@ export default function FeesPage() {
             </Card>
           )}
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          {selectedId ? (
+            renderStudentDetail()
+          ) : (
             <Card className="p-0 overflow-hidden">
               <div className="border-b border-slate-200 p-4 dark:border-slate-800">
                 <div className="mb-3 flex items-center gap-2">
                   <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Students</h2>
                 </div>
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  Click a student to view their fee details, payments, and balance.
+                </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <SearchInput
                     value={query}
@@ -548,261 +830,37 @@ export default function FeesPage() {
                   sortDir={sortDir}
                   onSort={handleStudentSort}
                 >
-                  {filteredStudents.map((student) => {
-                    const active = selectedId === student.studentId
-                    return (
-                      <tr
-                        key={student.studentId}
-                        className={[
-                          'cursor-pointer transition-colors',
-                          active
-                            ? 'bg-primary/5 dark:bg-primary/10'
-                            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40',
-                        ].join(' ')}
-                        onClick={() => setSelectedId(student.studentId)}
-                      >
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-slate-900 dark:text-white">{student.fullName}</p>
-                          <p className="text-xs text-slate-500">{student.studentCode || student.email}</p>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                          {formatCurrency(student.totalFees)}
-                        </td>
-                        <td className="px-4 py-3 text-emerald-700 dark:text-emerald-300">
-                          {formatCurrency(student.totalPaid)}
-                        </td>
-                        <td className="px-4 py-3 text-amber-700 dark:text-amber-300">
-                          {formatCurrency(student.balance)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge tone={feeTone(student.overallStatus)}>{student.overallStatus}</StatusBadge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                          {methodLabel(student.lastPaymentMethod)}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {filteredStudents.map((student) => (
+                    <tr
+                      key={student.studentId}
+                      className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                      onClick={() => selectStudent(student.studentId)}
+                    >
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900 dark:text-white">{student.fullName}</p>
+                        <p className="text-xs text-slate-500">{student.studentCode || student.email}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {formatCurrency(student.totalFees)}
+                      </td>
+                      <td className="px-4 py-3 text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(student.totalPaid)}
+                      </td>
+                      <td className="px-4 py-3 text-amber-700 dark:text-amber-300">
+                        {formatCurrency(student.balance)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge tone={feeTone(student.overallStatus)}>{student.overallStatus}</StatusBadge>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {methodLabel(student.lastPaymentMethod)}
+                      </td>
+                    </tr>
+                  ))}
                 </Table>
               )}
             </Card>
-
-            <Card>
-              {!selectedStudent ? (
-                <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
-                  <Wallet className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Select a student to view fee structure, deposits, and payment history.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                        {selectedStudent.fullName}
-                      </h2>
-                      <p className="text-sm text-slate-500">{selectedStudent.email}</p>
-                    </div>
-                    <ActionButton onClick={() => setShowFeeForm(true)}>Add fee</ActionButton>
-                  </div>
-
-                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                    <StatCard label="Total fees" value={formatCurrency(selectedStudent.totalFees)} />
-                    <StatCard label="Paid" value={formatCurrency(selectedStudent.totalPaid)} tone="green" />
-                    <StatCard label="Balance" value={formatCurrency(selectedStudent.balance)} tone="amber" />
-                  </div>
-
-                  {showFeeForm && (
-                    <form onSubmit={handleCreateFee} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                      <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">New fee record</h3>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="Fee type">
-                          <select
-                            className={fieldClass}
-                            value={feeForm.feeType}
-                            onChange={(e) => setFeeForm({ ...feeForm, feeType: e.target.value })}
-                          >
-                            {FEE_TYPES.map((type) => (
-                              <option key={type} value={type}>{type}</option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Academic year">
-                          <input
-                            className={fieldClass}
-                            required
-                            value={feeForm.academicYear}
-                            onChange={(e) => setFeeForm({ ...feeForm, academicYear: e.target.value })}
-                          />
-                        </Field>
-                        <Field label="Total amount (₹)">
-                          <input
-                            type="number"
-                            min="1"
-                            className={fieldClass}
-                            required
-                            value={feeForm.totalAmount}
-                            onChange={(e) => setFeeForm({ ...feeForm, totalAmount: e.target.value })}
-                          />
-                        </Field>
-                        <Field label="Due date">
-                          <input
-                            type="date"
-                            className={fieldClass}
-                            value={feeForm.dueDate}
-                            onChange={(e) => setFeeForm({ ...feeForm, dueDate: e.target.value })}
-                          />
-                        </Field>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <ActionButton type="submit" disabled={saving}>
-                          {saving ? 'Saving…' : 'Create fee'}
-                        </ActionButton>
-                        <ActionButton variant="ghost" onClick={() => setShowFeeForm(false)}>Cancel</ActionButton>
-                      </div>
-                    </form>
-                  )}
-
-                  {detailLoading && <LoadingBlock label="Loading fee details…" />}
-
-                  {!detailLoading && studentFees.length === 0 && (
-                    <EmptyBlock message="No fee records for this student yet." />
-                  )}
-
-                  {!detailLoading && studentFees.length > 0 && (
-                    <div className="space-y-4">
-                      {studentFees.map((fee) => (
-                        <div
-                          key={fee.id}
-                          className="rounded-xl border border-slate-200 p-4 dark:border-slate-700"
-                        >
-                          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <IndianRupee className="h-4 w-4 text-primary" />
-                                <p className="font-semibold text-slate-900 dark:text-white">{fee.feeType}</p>
-                                <StatusBadge tone={feeTone(fee.status)}>{fee.status}</StatusBadge>
-                              </div>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {fee.academicYear}
-                                {fee.dueDate ? ` · Due ${new Date(fee.dueDate).toLocaleDateString('en-IN')}` : ''}
-                              </p>
-                            </div>
-                            <div className="text-right text-sm">
-                              <p className="text-slate-500">Total {formatCurrency(fee.totalAmount)}</p>
-                              <p className="text-emerald-700 dark:text-emerald-300">Paid {formatCurrency(fee.paidAmount)}</p>
-                              <p className="font-medium text-amber-700 dark:text-amber-300">
-                                Balance {formatCurrency(fee.balanceAmount)}
-                              </p>
-                            </div>
-                          </div>
-
-                          {fee.balanceAmount > 0 && (
-                            <div className="mb-3">
-                              {paymentFeeId === fee.id ? (
-                                <form onSubmit={handleRecordPayment} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
-                                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Record payment
-                                  </p>
-                                  <div className="grid gap-2 sm:grid-cols-3">
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      max={fee.balanceAmount}
-                                      className={fieldClass}
-                                      placeholder="Amount"
-                                      required
-                                      value={paymentForm.amount}
-                                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                    />
-                                    <select
-                                      className={fieldClass}
-                                      value={paymentForm.method}
-                                      onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                                    >
-                                      {PAYMENT_METHODS.map((m) => (
-                                        <option key={m.value} value={m.value}>{m.label}</option>
-                                      ))}
-                                    </select>
-                                    <input
-                                      className={fieldClass}
-                                      placeholder="Reference / note"
-                                      value={paymentForm.referenceNote}
-                                      onChange={(e) => setPaymentForm({ ...paymentForm, referenceNote: e.target.value })}
-                                    />
-                                  </div>
-                                  <div className="mt-2 flex gap-2">
-                                    <ActionButton type="submit" disabled={saving}>
-                                      {saving ? 'Saving…' : 'Save payment'}
-                                    </ActionButton>
-                                    <ActionButton
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setPaymentFeeId(null)
-                                        setPaymentForm(emptyPaymentForm)
-                                      }}
-                                    >
-                                      Cancel
-                                    </ActionButton>
-                                  </div>
-                                </form>
-                              ) : (
-                                <ActionButton variant="success" onClick={() => setPaymentFeeId(fee.id)}>
-                                  Record payment
-                                </ActionButton>
-                              )}
-                            </div>
-                          )}
-
-                          {(fee.payments?.length ?? 0) > 0 ? (
-                            <div className="overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800">
-                              <table className="min-w-full text-left text-xs">
-                                <thead className="bg-slate-50 dark:bg-slate-800/60">
-                                  <tr>
-                                    <th className="px-3 py-2 font-semibold text-slate-500">Date</th>
-                                    <th className="px-3 py-2 font-semibold text-slate-500">Amount</th>
-                                    <th className="px-3 py-2 font-semibold text-slate-500">Method</th>
-                                    <th className="px-3 py-2 font-semibold text-slate-500">Reference</th>
-                                    <th className="px-3 py-2 font-semibold text-slate-500">Recorded by</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                  {fee.payments.map((payment) => (
-                                    <tr key={payment.id}>
-                                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                        {payment.paidAt
-                                          ? new Date(payment.paidAt).toLocaleString('en-IN')
-                                          : '—'}
-                                      </td>
-                                      <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">
-                                        {formatCurrency(payment.amount)}
-                                      </td>
-                                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                        {methodLabel(payment.method)}
-                                      </td>
-                                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                        {payment.referenceNote || '—'}
-                                      </td>
-                                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                        {payment.recordedByName || '—'}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-500">No payments recorded yet.</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
-          </div>
+          )}
         </>
       )}
     </div>

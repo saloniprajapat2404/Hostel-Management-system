@@ -12,4 +12,5 @@ public interface AllocationRepository extends MongoRepository<Allocation, String
     boolean existsByStudentIdAndActiveTrue(String studentId);
     List<Allocation> findByActiveTrueOrderByAllocatedAtDesc();
     long countByActiveTrue();
+    List<Allocation> findByRoomNumberIgnoreCaseAndActiveTrue(String roomNumber);
 }

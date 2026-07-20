@@ -26,6 +26,11 @@ public class User {
 
     private String phone;
 
+    /** WhatsApp-enabled mobile number (E.164 preferred, e.g. +919876543210). */
+    private String whatsappNumber;
+
+    private String parentPhone;
+
     private String aadharNumber;
 
     private String profilePicture;
@@ -99,6 +104,22 @@ public class User {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getWhatsappNumber() {
+        return whatsappNumber;
+    }
+
+    public void setWhatsappNumber(String whatsappNumber) {
+        this.whatsappNumber = whatsappNumber;
+    }
+
+    public String getParentPhone() {
+        return parentPhone;
+    }
+
+    public void setParentPhone(String parentPhone) {
+        this.parentPhone = parentPhone;
     }
 
     public String getAadharNumber() {

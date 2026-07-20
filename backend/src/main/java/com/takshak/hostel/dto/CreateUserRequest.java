@@ -11,6 +11,13 @@ public record CreateUserRequest(
         @NotBlank String fullName,
         @NotNull Role role,
         String studentId,
-        String phone
+        String phone,
+        String whatsappNumber,
+        String parentPhone,
+        String aadharNumber,
+        String addressLine,
+        String city,
+        String state,
+        String pincode
 ) {
 }

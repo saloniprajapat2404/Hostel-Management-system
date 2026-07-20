@@ -60,6 +60,8 @@ export default function ProfilePage() {
     try {
       const user = await apiGet('/api/auth/me')
       applyUser(user)
+      const remember = Boolean(localStorage.getItem('hms_token'))
+      saveSession({ token: getToken(), user }, remember)
     } catch (err) {
       setError(err.message || 'Failed to load profile')
       applyUser(getSession())

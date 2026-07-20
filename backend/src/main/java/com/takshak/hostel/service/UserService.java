@@ -66,9 +66,14 @@ public class UserService {
         User current = SecurityUtils.currentUser();
         Role targetRole = request.role();
 
-        if (current.getRole() == Role.SUPER_ADMIN || current.getRole() == Role.ADMIN) {
+        if (current.getRole() == Role.SUPER_ADMIN) {
+            if (targetRole != Role.SUPER_ADMIN && targetRole != Role.ADMIN
+                    && targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
+                throw new ApiException("Super Admin can only create SUPER_ADMIN, ADMIN, WARDEN or STUDENT users", 400);
+            }
+        } else if (current.getRole() == Role.ADMIN) {
             if (targetRole != Role.ADMIN && targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
-                throw new ApiException("Can only create ADMIN, WARDEN or STUDENT users", 400);
+                throw new ApiException("Admin can only create ADMIN, WARDEN or STUDENT users", 400);
             }
         } else {
             throw new ApiException("Access denied", 403);
@@ -89,6 +94,10 @@ public class UserService {
         user.setRole(targetRole);
         user.setStudentId(blankToNull(request.studentId()));
         user.setPhone(request.phone());
+        user.setWhatsappNumber(blankToNull(request.whatsappNumber()));
+        user.setParentPhone(blankToNull(request.parentPhone()));
+        applyStudentProfileFields(user, request.aadharNumber(), request.addressLine(),
+                request.city(), request.state(), request.pincode());
         user.setActive(true);
         return UserDto.from(userRepository.save(user));
     }
@@ -127,6 +136,35 @@ public class UserService {
         }
         if (request.phone() != null) {
             user.setPhone(request.phone());
+        }
+        if (request.whatsappNumber() != null) {
+            user.setWhatsappNumber(blankToNull(request.whatsappNumber()));
+        }
+        if (request.parentPhone() != null) {
+            user.setParentPhone(blankToNull(request.parentPhone()));
+        }
+        if (request.aadharNumber() != null) {
+            String aadhar = digitsOnly(request.aadharNumber());
+            if (aadhar != null && aadhar.length() != 12) {
+                throw new ApiException("Aadhar number must be 12 digits", 400);
+            }
+            user.setAadharNumber(aadhar);
+        }
+        if (request.addressLine() != null) {
+            user.setAddressLine(blankToNull(request.addressLine()));
+        }
+        if (request.city() != null) {
+            user.setCity(blankToNull(request.city()));
+        }
+        if (request.state() != null) {
+            user.setState(blankToNull(request.state()));
+        }
+        if (request.pincode() != null) {
+            String pincode = digitsOnly(request.pincode());
+            if (pincode != null && pincode.length() != 6) {
+                throw new ApiException("Pincode must be 6 digits", 400);
+            }
+            user.setPincode(pincode);
         }
         if (request.active() != null) {
             user.setActive(request.active());
@@ -219,6 +257,28 @@ public class UserService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void applyStudentProfileFields(
+            User user,
+            String aadharNumber,
+            String addressLine,
+            String city,
+            String state,
+            String pincode) {
+        String aadhar = digitsOnly(aadharNumber);
+        if (aadhar != null && aadhar.length() != 12) {
+            throw new ApiException("Aadhar number must be 12 digits", 400);
+        }
+        user.setAadharNumber(aadhar);
+        user.setAddressLine(blankToNull(addressLine));
+        user.setCity(blankToNull(city));
+        user.setState(blankToNull(state));
+        String pin = digitsOnly(pincode);
+        if (pin != null && pin.length() != 6) {
+            throw new ApiException("Pincode must be 6 digits", 400);
+        }
+        user.setPincode(pin);
     }
 
     private String digitsOnly(String value) {

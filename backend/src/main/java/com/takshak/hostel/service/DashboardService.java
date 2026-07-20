@@ -65,7 +65,7 @@ public class DashboardService {
                 stats.put("myBedLabel", allocation.getBedLabel());
                 stats.put("myFloor", allocation.getFloor());
             });
-            stats.put("activeNotices", noticeRepository.findByActiveTrueOrderByCreatedAtDesc().size());
+            stats.put("activeNotices", noticeRepository.countByStatus(com.takshak.hostel.enums.NoticeStatus.ACTIVE));
             stats.put("myOpenComplaints",
                     complaintRepository.findByStudentIdOrderByCreatedAtDesc(current.getId()).stream()
                             .filter(c -> c.getStatus() != ComplaintStatus.RESOLVED)
@@ -78,7 +78,7 @@ public class DashboardService {
         stats.put("occupiedBeds", bedRepository.countByOccupiedTrue());
         stats.put("vacantBeds", bedRepository.countByOccupiedFalse());
         stats.put("activeAllocations", allocationRepository.countByActiveTrue());
-        stats.put("activeNotices", noticeRepository.findByActiveTrueOrderByCreatedAtDesc().size());
+        stats.put("activeNotices", noticeRepository.countByStatus(com.takshak.hostel.enums.NoticeStatus.ACTIVE));
 
         if (current.getRole() == Role.SUPER_ADMIN || current.getRole() == Role.ADMIN) {
             stats.put("students", userRepository.countByRoleAndActiveTrue(Role.STUDENT));

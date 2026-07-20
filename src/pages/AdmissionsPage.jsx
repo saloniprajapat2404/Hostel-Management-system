@@ -165,7 +165,7 @@ export default function AdmissionsPage() {
           <TableToolbar>
             <SearchInput value={search} onChange={setSearch} placeholder="Search student, email, ID…" />
             <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-              <option value="ALL">All statuses</option>
+              <option value="ALL">All Status</option>
               <option value="PENDING">Pending</option>
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>

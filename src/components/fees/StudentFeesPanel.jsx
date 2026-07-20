@@ -18,14 +18,9 @@ function feeTone(status) {
 }
 
 function methodLabel(method) {
-  const labels = {
-    CASH: 'Cash',
-    UPI: 'UPI',
-    BANK_TRANSFER: 'Bank transfer',
-    CARD: 'Card',
-    ONLINE: 'Online gateway',
-  }
-  return labels[method] || method || '—'
+  if (method === 'CASH') return 'Cash'
+  if (method === 'ONLINE' || method === 'UPI' || method === 'BANK_TRANSFER' || method === 'CARD') return 'Online'
+  return method || '—'
 }
 
 export default function StudentFeesPanel({ title = 'Fees details', showHeading = true }) {

@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bell,
@@ -77,13 +78,26 @@ function ActivityRow({ item }) {
   )
 }
 
-export default function RecentActivityTimeline({ items = [], role = 'STUDENT' }) {
-  const sorted = [...items]
-    .filter((i) => i?.title)
-    .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+function RecentActivityTimeline({ items = [], role = 'STUDENT', loading = false }) {
+  const sorted = useMemo(
+    () =>
+      [...items]
+        .filter((i) => i?.title)
+        .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0)),
+    [items],
+  )
 
-  const viewAllHref = VIEW_ALL[role] || '/app/complaints'
+  const viewAllHref = VIEW_ALL[role] || '/app/activity'
   const hasScroll = sorted.length > 5
+
+  if (loading) {
+    return (
+      <section>
+        <h3 className="dashboard-section-label">Recent activity</h3>
+        <div className="dashboard-surface-card h-[280px] animate-pulse" />
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -121,3 +135,5 @@ export default function RecentActivityTimeline({ items = [], role = 'STUDENT' })
     </section>
   )
 }
+
+export default memo(RecentActivityTimeline)

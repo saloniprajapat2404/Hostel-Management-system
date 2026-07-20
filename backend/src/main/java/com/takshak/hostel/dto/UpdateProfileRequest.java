@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 public record UpdateProfileRequest(
         @NotBlank String fullName,
         String phone,
+        String parentPhone,
         String aadharNumber,
         @Size(max = 500_000, message = "Profile picture is too large")
         String profilePicture,

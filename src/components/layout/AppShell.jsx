@@ -9,7 +9,40 @@ import { useHostelConfig } from '../../context/HostelConfigContext'
 import { apiGet } from '../../utils/api'
 import { clearSession, getSession, getToken, saveSession } from '../../utils/auth'
 
-const STAFF_NAV = [
+const ADMIN_NAV = [
+  { to: '/app', label: 'Dashboard', end: true },
+  { to: '/app/add-user', label: 'Add User' },
+  {
+    label: 'Management',
+    children: [
+      { to: '/app/users?role=ADMIN', label: 'Admins' },
+      { to: '/app/users?role=WARDEN', label: 'Wardens' },
+      { to: '/app/residents', label: 'Residents' },
+      { to: '/app/rooms', label: 'Rooms' },
+      { to: '/app/admissions', label: 'Admissions' },
+      { to: '/app/allocations', label: 'Allocations' },
+    ],
+  },
+  {
+    label: 'Finance',
+    children: [
+      { to: '/app/fees', label: 'Fees' },
+      { to: '/app/expenses', label: 'Expenses' },
+    ],
+  },
+  {
+    label: 'Communication',
+    children: [
+      { to: '/app/notices', label: 'Notice' },
+      { to: '/app/complaints', label: 'Complaints' },
+    ],
+  },
+  { to: '/app/occupancy', label: 'Reports' },
+  { to: '/app/attendance', label: 'Attendance' },
+  { to: '/app/activity', label: 'Activity' },
+]
+
+const SUPER_ADMIN_NAV = [
   { to: '/app', label: 'Dashboard', end: true },
   { to: '/app/add-user', label: 'Add User' },
   {
@@ -44,8 +77,8 @@ const STAFF_NAV = [
 ]
 
 const ROLE_NAV = {
-  SUPER_ADMIN: STAFF_NAV,
-  ADMIN: STAFF_NAV,
+  SUPER_ADMIN: SUPER_ADMIN_NAV,
+  ADMIN: ADMIN_NAV,
   WARDEN: [
     { to: '/app', label: 'Dashboard', end: true },
     {
@@ -209,8 +242,15 @@ export default function AppShell() {
         /* keep cached session */
       }
     })()
+
+    const onSessionUpdated = (event) => {
+      setUser(event.detail || getSession())
+    }
+    window.addEventListener('hms:session-updated', onSessionUpdated)
+
     return () => {
       cancelled = true
+      window.removeEventListener('hms:session-updated', onSessionUpdated)
     }
   }, [])
 

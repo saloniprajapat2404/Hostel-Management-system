@@ -6,6 +6,13 @@ public record UpdateUserRequest(
         String fullName,
         String studentId,
         String phone,
+        String whatsappNumber,
+        String parentPhone,
+        String aadharNumber,
+        String addressLine,
+        String city,
+        String state,
+        String pincode,
         Boolean active
 ) {
 }

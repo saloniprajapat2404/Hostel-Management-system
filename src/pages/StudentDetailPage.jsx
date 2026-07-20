@@ -12,6 +12,18 @@ import {
   Table,
 } from '../components/ui/Page'
 
+function formatAadhar(value) {
+  const digits = (value || '').replace(/\D/g, '')
+  if (!digits) return '—'
+  if (digits.length !== 12) return digits
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+}
+
+function formatAddress(student) {
+  const parts = [student.addressLine, student.city, student.state, student.pincode].filter(Boolean)
+  return parts.length ? parts.join(', ') : '—'
+}
+
 function InfoGrid({ items }) {
   const visible = items.filter((i) => i.value != null && i.value !== '')
   if (!visible.length) return null
@@ -72,9 +84,6 @@ export default function StudentDetailPage() {
   if (!data?.student) return <EmptyBlock message="Student not found." />
 
   const { student, allocation, allocations = [], complaints, fees, feeDetails, attendance = [] } = data
-  const address = [student.addressLine, student.city, student.state, student.pincode]
-    .filter(Boolean)
-    .join(', ')
 
   const history = [
     ...allocations.map((a) => ({
@@ -136,8 +145,6 @@ export default function StudentDetailPage() {
               { label: 'Student ID', value: student.studentId },
               { label: 'Email', value: student.email },
               { label: 'Phone', value: student.phone },
-              { label: 'Aadhar', value: student.aadharNumber },
-              { label: 'Address', value: address },
               {
                 label: 'Joined',
                 value: student.createdAt
@@ -146,6 +153,46 @@ export default function StudentDetailPage() {
               },
             ]}
           />
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+            Contact &amp; Identity
+          </h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Aadhar no
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                {formatAadhar(student.aadharNumber)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Parent mobile no
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                {student.parentPhone || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                WhatsApp number
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                {student.whatsappNumber || student.phone || '—'}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Address
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                {formatAddress(student)}
+              </dd>
+            </div>
+          </dl>
         </Card>
 
         <Card>

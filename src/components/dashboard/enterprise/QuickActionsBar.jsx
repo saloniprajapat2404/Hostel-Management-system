@@ -1,10 +1,12 @@
-﻿import { Link } from 'react-router-dom'
+﻿import { memo, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import {
   BedDouble,
   Bell,
   Building2,
   IndianRupee,
   MessageSquarePlus,
+  Receipt,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -12,53 +14,125 @@ import {
 const ACTIONS = {
   rooms: {
     label: 'Rooms',
+    hint: 'View occupancy and room status',
     to: '/app/occupancy',
     icon: Building2,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'],
   },
   residents: {
     label: 'Residents',
+    hint: 'Browse hostel residents',
     to: '/app/residents',
     icon: Users,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'],
   },
-  addStudent: { label: 'Add User', to: '/app/add-user', icon: UserPlus, roles: ['ADMIN', 'SUPER_ADMIN'] },
-  allocateRoom: { label: 'Allocate Room', to: '/app/allocations', icon: BedDouble, roles: ['ADMIN', 'SUPER_ADMIN'] },
-  collectFee: { label: 'Collect Fee', to: '/app/fees', icon: IndianRupee, roles: ['ADMIN', 'SUPER_ADMIN'] },
-  myFees: { label: 'My Fees', to: '/app/my-fees', icon: IndianRupee, roles: ['STUDENT'] },
-  addNotice: { label: 'Add Notice', to: '/app/notices', icon: Bell, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'] },
+  allocateRoom: {
+    label: 'Allocate Room',
+    hint: 'Assign beds to students',
+    to: '/app/allocations',
+    icon: BedDouble,
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+  },
+  collectFee: {
+    label: 'Collect Fee',
+    hint: 'Manage student fees and payments',
+    to: '/app/fees',
+    icon: IndianRupee,
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+  },
+  myFees: {
+    label: 'My Fees',
+    hint: 'View your fee balance and payments',
+    to: '/app/my-fees',
+    icon: IndianRupee,
+    roles: ['STUDENT'],
+  },
+  addNotice: {
+    label: 'Add Notice',
+    hint: 'Publish hostel notices and alerts',
+    to: '/app/notices',
+    icon: Bell,
+    roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'],
+  },
   registerComplaint: {
     label: 'Register Complaint',
+    hint: 'Log a new complaint',
     to: '/app/complaints',
     icon: MessageSquarePlus,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'],
   },
 }
 
-export default function QuickActionsBar({ role }) {
-  const items = Object.values(ACTIONS).filter((a) => a.roles.includes(role))
+const iconClass =
+  'h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#3B82F6] motion-reduce:transform-none'
 
-  if (!items.length) return null
+function QuickActionsBar({
+  role,
+  addUserOpen = false,
+  onAddUserToggle,
+  expensesOpen = false,
+  onExpensesToggle,
+}) {
+  const items = useMemo(
+    () => Object.values(ACTIONS).filter((action) => action.roles.includes(role)),
+    [role],
+  )
+  const canManageFinance = role === 'ADMIN' || role === 'SUPER_ADMIN'
+
+  if (!items.length && !canManageFinance) return null
 
   return (
-    <section>
+    <section aria-label="Quick access">
       <h3 className="dashboard-section-label">Quick access</h3>
       <div className="flex flex-wrap items-center gap-2">
-        {items.map(({ label, to, icon: Icon }) => (
+        {canManageFinance && onExpensesToggle && (
+          <button
+            type="button"
+            onClick={onExpensesToggle}
+            aria-expanded={expensesOpen}
+            aria-controls="dashboard-expenses"
+            title="Record and view hostel expenses"
+            className={[
+              'dashboard-quick-action group',
+              expensesOpen ? 'dashboard-quick-action-active' : '',
+            ].join(' ')}
+          >
+            <Receipt className={iconClass} strokeWidth={2} />
+            <span className="whitespace-nowrap">Expenses</span>
+          </button>
+        )}
+
+        {canManageFinance && onAddUserToggle && (
+          <button
+            type="button"
+            onClick={onAddUserToggle}
+            aria-expanded={addUserOpen}
+            aria-controls="dashboard-add-user"
+            title="Register admin, warden, or student accounts"
+            className={[
+              'dashboard-quick-action group',
+              addUserOpen ? 'dashboard-quick-action-active' : '',
+            ].join(' ')}
+          >
+            <UserPlus className={iconClass} strokeWidth={2} />
+            <span className="whitespace-nowrap">Add User</span>
+          </button>
+        )}
+
+        {items.map(({ label, hint, to, icon: Icon }) => (
           <Link
             key={to + label}
             to={to}
-            aria-label={label}
-            className="group flex h-10 items-center gap-2 overflow-hidden rounded-[10px] border px-2.5 text-[var(--dash-muted)] transition-all duration-200 hover:border-[#3B82F6]/40 hover:bg-[var(--dash-hover)] hover:text-[var(--dash-text)] hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
-            style={{ borderColor: 'var(--dash-border-subtle)', background: 'var(--dash-surface)' }}
+            title={hint || label}
+            className="dashboard-quick-action group"
           >
-            <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-            <span className="max-w-0 overflow-hidden whitespace-nowrap text-[12px] font-medium opacity-0 transition-all duration-200 group-hover:max-w-[140px] group-hover:opacity-100">
-              {label}
-            </span>
+            <Icon className={iconClass} strokeWidth={2} />
+            <span className="whitespace-nowrap">{label}</span>
           </Link>
         ))}
       </div>
     </section>
   )
 }
+
+export default memo(QuickActionsBar)

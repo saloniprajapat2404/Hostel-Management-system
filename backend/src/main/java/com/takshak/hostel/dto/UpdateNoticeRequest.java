@@ -6,14 +6,13 @@ import com.takshak.hostel.enums.NoticeTargetAudience;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record CreateNoticeRequest(
+public record UpdateNoticeRequest(
         @NotBlank String title,
         @NotBlank String description,
         @NotNull NoticeCategory category,
         @NotNull NoticeTargetAudience targetAudience,
         String roomNumber,
         String studentId,
-        /** When true (default), WhatsApp is sent automatically after creation. */
-        Boolean sendWhatsApp
+        NoticeStatus status
 ) {
 }

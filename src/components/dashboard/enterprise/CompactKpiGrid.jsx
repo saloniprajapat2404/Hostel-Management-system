@@ -23,7 +23,9 @@ function KpiCardContent({ label, value, tone = 'default', icon: Icon }) {
         </p>
       </div>
       {Icon && (
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${styles.icon}`}>
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] transition-transform duration-200 group-hover:scale-110 ${styles.icon}`}
+        >
           <Icon className="h-4 w-4" strokeWidth={2} />
         </span>
       )}
@@ -32,14 +34,13 @@ function KpiCardContent({ label, value, tone = 'default', icon: Icon }) {
 }
 
 function KpiCard({ label, value, tone = 'default', icon, to }) {
-  const cardClass =
-    'dashboard-surface-card block p-3 transition-all hover:bg-[var(--dash-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40'
+  const cardClass = 'dashboard-surface-card dashboard-kpi-card group block p-3'
 
   if (to) {
     return (
       <Link
         to={to}
-        className={`${cardClass} cursor-pointer hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none`}
+        className={`${cardClass} cursor-pointer`}
         aria-label={`View ${label}`}
       >
         <KpiCardContent label={label} value={value} tone={tone} icon={icon} />

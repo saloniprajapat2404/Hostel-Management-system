@@ -124,6 +124,9 @@ public class StudentFeeService {
         if (request.amount().compareTo(balance) > 0) {
             throw new ApiException("Payment exceeds remaining balance of " + balance, 400);
         }
+        if (request.method() != PaymentMethod.CASH && request.method() != PaymentMethod.ONLINE) {
+            throw new ApiException("Payment method must be ONLINE or CASH", 400);
+        }
 
         FeePayment payment = new FeePayment();
         payment.setAmount(request.amount());

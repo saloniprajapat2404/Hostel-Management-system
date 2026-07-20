@@ -202,7 +202,7 @@ export default function RoomsPage() {
               ))}
             </FilterSelect>
             <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-              <option value="ALL">All statuses</option>
+              <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
               <option value="VACANT">Has vacant beds</option>

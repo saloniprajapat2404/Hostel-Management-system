@@ -22,21 +22,21 @@ public class ExpenseService {
     }
 
     public List<ExpenseDto> list() {
-        assertSuperAdminAccess();
+        assertAdminAccess();
         return expenseRepository.findAllByOrderByExpenseDateDescCreatedAtDesc().stream()
                 .map(ExpenseDto::from)
                 .toList();
     }
 
     public BigDecimal totalExpenses() {
-        assertSuperAdminAccess();
+        assertAdminAccess();
         return expenseRepository.findAllByOrderByExpenseDateDescCreatedAtDesc().stream()
                 .map(Expense::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public ExpenseDto create(CreateExpenseRequest request) {
-        assertSuperAdminAccess();
+        assertAdminAccess();
         User actor = SecurityUtils.currentUser();
 
         Expense expense = new Expense();
@@ -50,15 +50,16 @@ public class ExpenseService {
     }
 
     public void delete(String id) {
-        assertSuperAdminAccess();
+        assertAdminAccess();
         if (!expenseRepository.existsById(id)) {
             throw new ApiException("Expense not found", 404);
         }
         expenseRepository.deleteById(id);
     }
 
-    private void assertSuperAdminAccess() {
-        if (SecurityUtils.currentUser().getRole() != Role.SUPER_ADMIN) {
+    private void assertAdminAccess() {
+        Role role = SecurityUtils.currentUser().getRole();
+        if (role != Role.ADMIN && role != Role.SUPER_ADMIN) {
             throw new ApiException("Access denied", 403);
         }
     }

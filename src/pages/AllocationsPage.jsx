@@ -207,7 +207,7 @@ export default function AllocationsPage() {
           <TableToolbar>
             <SearchInput value={search} onChange={setSearch} placeholder="Search student, email, room…" />
             <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-              <option value="ALL">All statuses</option>
+              <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="ENDED">Ended</option>
             </FilterSelect>

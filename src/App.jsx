@@ -47,6 +47,8 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
             <Route path="fees" element={<FeesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
             <Route path="expenses" element={<ExpensesPage />} />
           </Route>
           <Route path="activity" element={<ActivityPage />} />

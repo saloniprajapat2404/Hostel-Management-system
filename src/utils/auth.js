@@ -47,6 +47,7 @@ export function saveSession({ token, user }, remember) {
   other.removeItem(USER_KEY)
   storage.setItem(TOKEN_KEY, token)
   storage.setItem(USER_KEY, JSON.stringify(user))
+  window.dispatchEvent(new CustomEvent('hms:session-updated', { detail: user }))
 }
 
 export function getToken() {
@@ -73,4 +74,22 @@ export function clearSession() {
 
 export function isAuthenticated() {
   return Boolean(getToken())
+}
+
+export async function refreshSessionUser() {
+  const token = getToken()
+  if (!token) return getSession()
+
+  try {
+    const res = await fetch(apiUrl('/api/auth/me'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return getSession()
+    const user = await res.json()
+    const remember = Boolean(localStorage.getItem(TOKEN_KEY))
+    saveSession({ token, user }, remember)
+    return user
+  } catch {
+    return getSession()
+  }
 }

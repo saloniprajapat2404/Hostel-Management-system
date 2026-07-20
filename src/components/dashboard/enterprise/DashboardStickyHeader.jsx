@@ -1,7 +1,6 @@
-import { UserRound } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import DashboardSearch from './DashboardSearch'
 import NotificationBell from '../../notifications/NotificationBell'
+
 export default function DashboardStickyHeader({ role }) {
   return (
     <header
@@ -16,11 +15,7 @@ export default function DashboardStickyHeader({ role }) {
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           <DashboardSearch role={role} />
-
           <NotificationBell variant="dashboard" />
-          <Link to="/app/profile" className="dashboard-icon-btn shrink-0" aria-label="Profile">
-            <UserRound className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </header>

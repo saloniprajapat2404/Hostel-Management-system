@@ -157,7 +157,7 @@ export default function ComplaintsPage() {
           <TableToolbar>
             <SearchInput value={search} onChange={setSearch} placeholder="Search title, student, description…" />
             <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-              <option value="ALL">All statuses</option>
+              <option value="ALL">All Status</option>
               {STATUSES.map((status) => (
                 <option key={status} value={status}>{status}</option>
               ))}

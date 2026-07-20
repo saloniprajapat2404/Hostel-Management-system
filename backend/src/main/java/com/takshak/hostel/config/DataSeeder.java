@@ -112,12 +112,15 @@ public class DataSeeder implements CommandLineRunner {
                     studentId,
                     "98" + String.format("%08d", 10000000 + i)
             );
+            student.setWhatsappNumber("+9198" + String.format("%08d", 10000000 + i));
+            student = userRepository.save(student);
             if (i == 1) {
                 student.setAadharNumber("234567890123");
                 student.setAddressLine("Hostel Block A, Room R01");
                 student.setCity("Pune");
                 student.setState("Maharashtra");
                 student.setPincode("411001");
+                student.setParentPhone("9876543210");
                 student = userRepository.save(student);
             }
             students.add(student);
@@ -286,11 +289,24 @@ public class DataSeeder implements CommandLineRunner {
                 student.setCity("Pune");
                 student.setState("Maharashtra");
                 student.setPincode("411001");
-                userRepository.save(student);
             }
+            if (student.getParentPhone() == null) {
+                student.setParentPhone("9876543210");
+            }
+            if (student.getWhatsappNumber() == null) {
+                student.setWhatsappNumber("+919876543210");
+            }
+            userRepository.save(student);
         });
 
         userRepository.findByRole(Role.STUDENT).forEach(student -> {
+            if (student.getWhatsappNumber() == null && student.getPhone() != null && !student.getPhone().isBlank()) {
+                String digits = student.getPhone().replaceAll("\\D", "");
+                if (digits.length() >= 10) {
+                    student.setWhatsappNumber("+91" + digits.substring(digits.length() - 10));
+                    userRepository.save(student);
+                }
+            }
             if (studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId()).isEmpty()) {
                 seedFeesForStudent(student);
             } else {
@@ -304,9 +320,9 @@ public class DataSeeder implements CommandLineRunner {
         studentFeeRepository.findByStudentIdOrderByDueDateDesc(student.getId()).forEach(fee -> {
             if (fee.getPayments().isEmpty() && fee.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
                 PaymentMethod method = switch (fee.getFeeType()) {
-                    case "Hostel Fee" -> PaymentMethod.UPI;
+                    case "Hostel Fee" -> PaymentMethod.ONLINE;
                     case "Mess Fee" -> PaymentMethod.CASH;
-                    default -> PaymentMethod.BANK_TRANSFER;
+                    default -> PaymentMethod.ONLINE;
                 };
                 studentFeeService.seedPayment(fee, fee.getPaidAmount(), method, "Migrated demo payment", admin);
             }
@@ -322,10 +338,10 @@ public class DataSeeder implements CommandLineRunner {
 
         StudentFee hostel = saveFeeRecord(student, "Hostel Fee", "2025-26", new BigDecimal("45000"),
                 LocalDate.of(2026, 7, 31));
-        studentFeeService.seedPayment(hostel, new BigDecimal("20000"), PaymentMethod.UPI,
-                "UPI ref TXN-HOSTEL-001", admin);
-        studentFeeService.seedPayment(hostel, new BigDecimal("10000"), PaymentMethod.BANK_TRANSFER,
-                "NEFT ref NEFT8821", admin);
+        studentFeeService.seedPayment(hostel, new BigDecimal("20000"), PaymentMethod.ONLINE,
+                "Online ref TXN-HOSTEL-001", admin);
+        studentFeeService.seedPayment(hostel, new BigDecimal("10000"), PaymentMethod.ONLINE,
+                "Online gateway ORD-9920", admin);
 
         StudentFee mess = saveFeeRecord(student, "Mess Fee", "2025-26", new BigDecimal("18000"),
                 LocalDate.of(2026, 6, 30));

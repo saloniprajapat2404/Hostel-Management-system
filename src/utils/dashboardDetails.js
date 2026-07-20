@@ -105,7 +105,7 @@ export async function fetchDashboardDetail(detailKey) {
         .map((n) => ({
           id: n.id,
           primary: n.title,
-          secondary: n.body?.slice(0, 80) + (n.body?.length > 80 ? '…' : ''),
+          secondary: n.description?.slice(0, 80) + (n.description?.length > 80 ? '…' : ''),
           meta: n.createdByName || 'Notice',
           tone: 'teal',
         }))
