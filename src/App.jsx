@@ -16,6 +16,9 @@ import MyRoomPage from './pages/MyRoomPage'
 import MyFeesPage from './pages/MyFeesPage'
 import ProfilePage from './pages/ProfilePage'
 import FeesPage from './pages/FeesPage'
+import ExpensesPage from './pages/ExpensesPage'
+import ResidentsPage from './pages/ResidentsPage'
+import ActivityPage from './pages/ActivityPage'
 import StudentDetailPage from './pages/StudentDetailPage'
 
 function App() {
@@ -40,10 +43,13 @@ function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN', 'WARDEN']} />}>
             <Route path="students/:studentId" element={<StudentDetailPage />} />
+            <Route path="residents" element={<ResidentsPage />} />
           </Route>
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
             <Route path="fees" element={<FeesPage />} />
+            <Route path="expenses" element={<ExpensesPage />} />
           </Route>
+          <Route path="activity" element={<ActivityPage />} />
           <Route path="my-room" element={<MyRoomPage />} />
           <Route path="my-fees" element={<MyFeesPage />} />
           <Route path="profile" element={<ProfilePage />} />

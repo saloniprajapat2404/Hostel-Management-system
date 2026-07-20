@@ -14,7 +14,7 @@ import {
   StatusBadge,
 } from '../components/ui/Page'
 
-const MAX_PHOTO_BYTES = 500 * 1024
+const MAX_PHOTO_BYTES = 1500 * 1024
 
 const emptyForm = {
   fullName: '',
@@ -72,6 +72,23 @@ export default function ProfilePage() {
     load()
   }, [load])
 
+  const persistProfile = async (nextForm) => {
+    const updated = await apiPut('/api/users/me/profile', {
+      fullName: nextForm.fullName,
+      phone: nextForm.phone,
+      aadharNumber: nextForm.aadharNumber.replace(/\D/g, '') || null,
+      profilePicture: nextForm.profilePicture || null,
+      addressLine: nextForm.addressLine,
+      city: nextForm.city,
+      state: nextForm.state,
+      pincode: nextForm.pincode.replace(/\D/g, '') || null,
+    })
+    const remember = Boolean(localStorage.getItem('hms_token'))
+    saveSession({ token: getToken(), user: updated }, remember)
+    applyUser(updated)
+    return updated
+  }
+
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -80,13 +97,24 @@ export default function ProfilePage() {
       return
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setError('Profile picture must be 500 KB or smaller.')
+      setError('Profile picture must be 1.5 MB or smaller.')
       return
     }
     const reader = new FileReader()
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, profilePicture: String(reader.result) }))
+    reader.onload = async () => {
+      const profilePicture = String(reader.result)
+      const nextForm = { ...form, profilePicture }
+      setForm(nextForm)
       setError('')
+      setSaving(true)
+      try {
+        await persistProfile(nextForm)
+        setSuccess('Profile picture saved. It will stay after refresh.')
+      } catch (err) {
+        setError(err.message || 'Could not save profile picture')
+      } finally {
+        setSaving(false)
+      }
     }
     reader.readAsDataURL(file)
   }
@@ -97,19 +125,7 @@ export default function ProfilePage() {
     setError('')
     setSuccess('')
     try {
-      const updated = await apiPut('/api/users/me/profile', {
-        fullName: form.fullName,
-        phone: form.phone,
-        aadharNumber: form.aadharNumber.replace(/\D/g, '') || null,
-        profilePicture: form.profilePicture || null,
-        addressLine: form.addressLine,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode.replace(/\D/g, '') || null,
-      })
-      const remember = Boolean(localStorage.getItem('hms_token'))
-      saveSession({ token: getToken(), user: updated }, remember)
-      applyUser(updated)
+      await persistProfile(form)
       setSuccess('Profile updated successfully.')
     } catch (err) {
       setError(err.message || 'Update failed')

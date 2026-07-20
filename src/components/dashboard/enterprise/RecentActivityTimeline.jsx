@@ -16,10 +16,10 @@ const TYPE_META = {
 }
 
 const VIEW_ALL = {
-  SUPER_ADMIN: '/app/admissions',
-  ADMIN: '/app/admissions',
-  WARDEN: '/app/complaints',
-  STUDENT: '/app/complaints',
+  SUPER_ADMIN: '/app/activity',
+  ADMIN: '/app/activity',
+  WARDEN: '/app/activity',
+  STUDENT: '/app/activity',
 }
 
 function formatWhen(iso) {

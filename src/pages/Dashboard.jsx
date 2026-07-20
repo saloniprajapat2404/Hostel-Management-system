@@ -16,6 +16,7 @@ import DashboardHero from '../components/dashboard/enterprise/DashboardHero'
 import CompactKpiGrid from '../components/dashboard/enterprise/CompactKpiGrid'
 import QuickActionsBar from '../components/dashboard/enterprise/QuickActionsBar'
 import RecentActivityTimeline from '../components/dashboard/enterprise/RecentActivityTimeline'
+import FeeCollectionPanel from '../components/dashboard/enterprise/FeeCollectionPanel'
 import DashboardCharts from '../components/dashboard/charts/DashboardCharts'
 import { DashboardSkeleton } from '../components/ui/DashboardUi'
 
@@ -188,6 +189,7 @@ export default function Dashboard() {
   const role = user?.role || 'STUDENT'
   const [stats, setStats] = useState(null)
   const [feeOverview, setFeeOverview] = useState(null)
+  const [feeStudents, setFeeStudents] = useState([])
   const [studentFees, setStudentFees] = useState([])
   const [activityItems, setActivityItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -199,27 +201,23 @@ export default function Dashboard() {
     setFeesLoading(true)
     setError('')
     setFeeOverview(null)
+    setFeeStudents([])
     setStudentFees([])
     setActivityItems([])
     try {
-      const data = await apiGet('/api/dashboard/stats')
-      setStats(data?.stats || {})
-
-      if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-        try {
-          setFeeOverview(await apiGet('/api/fees/overview'))
-        } catch {
-          setFeeOverview(null)
-        }
-      } else if (role === 'STUDENT') {
-        try {
-          setStudentFees((await apiGet('/api/users/me/fees')) || [])
-        } catch {
-          setStudentFees([])
-        }
-      }
-
-      setActivityItems(await loadRecentActivity(role))
+      const isFinance = role === 'ADMIN' || role === 'SUPER_ADMIN'
+      const [statsRes, overviewRes, feeStudentsRes, myFeesRes, activityRes] = await Promise.all([
+        apiGet('/api/dashboard/stats'),
+        isFinance ? apiGet('/api/fees/overview').catch(() => null) : Promise.resolve(null),
+        isFinance ? apiGet('/api/fees/students').catch(() => []) : Promise.resolve([]),
+        role === 'STUDENT' ? apiGet('/api/users/me/fees').catch(() => []) : Promise.resolve([]),
+        loadRecentActivity(role),
+      ])
+      setStats(statsRes?.stats || {})
+      setFeeOverview(overviewRes)
+      setFeeStudents(feeStudentsRes || [])
+      setStudentFees(myFeesRes || [])
+      setActivityItems(activityRes || [])
     } catch (err) {
       setError(err.message || 'Failed to load dashboard')
     } finally {
@@ -272,6 +270,10 @@ export default function Dashboard() {
             chartsLoading={false}
             feesLoading={feesLoading}
           />
+
+          {(role === 'ADMIN' || role === 'SUPER_ADMIN') && (
+            <FeeCollectionPanel students={feeStudents} loading={feesLoading} />
+          )}
 
           <RecentActivityTimeline items={activityItems} role={role} />
         </div>

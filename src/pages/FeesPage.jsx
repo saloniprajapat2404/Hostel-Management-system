@@ -20,11 +20,11 @@ import {
 import { sortRows, toggleSort, matchesSearch } from '../utils/tableHelpers'
 
 const PAYMENT_METHODS = [
+  { value: 'ONLINE', label: 'Online' },
   { value: 'CASH', label: 'Cash' },
   { value: 'UPI', label: 'UPI' },
   { value: 'BANK_TRANSFER', label: 'Bank transfer' },
   { value: 'CARD', label: 'Card' },
-  { value: 'ONLINE', label: 'Online gateway' },
 ]
 
 const FEE_TYPES = ['Hostel Fee', 'Mess Fee', 'Security Deposit', 'Late Fine', 'Other']
@@ -38,7 +38,7 @@ const emptyFeeForm = {
 
 const emptyPaymentForm = {
   amount: '',
-  method: 'UPI',
+  method: 'ONLINE',
   referenceNote: '',
 }
 
@@ -529,7 +529,7 @@ export default function FeesPage() {
                     placeholder="Search name, email, or student ID"
                   />
                   <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-                    <option value="ALL">All statuses</option>
+                    <option value="ALL">All Status</option>
                     <option value="PAID">Fully paid</option>
                     <option value="PARTIAL">Partial</option>
                     <option value="PENDING">Pending</option>

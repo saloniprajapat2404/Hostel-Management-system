@@ -17,10 +17,10 @@ export async function loadStudentDirectory(role) {
   const allocationByStudent = new Map()
   ;(allocations || [])
     .filter((a) => a.active)
-    .forEach((a) => allocationByStudent.set(String(a.studentId), a))
+    .forEach((a) => allocationByStudent.set(a.studentId, a))
 
   const feesByStudent = new Map()
-  ;(feeSummaries || []).forEach((f) => feesByStudent.set(String(f.studentId), f))
+  ;(feeSummaries || []).forEach((f) => feesByStudent.set(f.studentId, f))
 
   return {
     students: students || [],
@@ -47,8 +47,8 @@ export function filterStudents(students, query, limit = 8) {
 export function buildStudentProfile(student, allocationByStudent, feesByStudent) {
   if (!student) return null
 
-  const allocation = allocationByStudent.get(String(student.id))
-  const fees = feesByStudent.get(String(student.id))
+  const allocation = allocationByStudent.get(student.id)
+  const fees = feesByStudent.get(student.id)
 
   return {
     ...student,
@@ -67,24 +67,28 @@ export async function fetchStudentFullProfile(studentId, role) {
     throw new Error('Student not found')
   }
 
-  const [allocations, complaints, feeSummaries, feeDetails] = await Promise.all([
+  const [allocations, complaints, feeSummaries, feeDetails, attendance] = await Promise.all([
     apiGet('/api/allocations').catch(() => []),
     apiGet('/api/complaints').catch(() => []),
     canSeeFees ? apiGet('/api/fees/students').catch(() => []) : Promise.resolve([]),
     canSeeFees ? apiGet(`/api/fees/students/${id}`).catch(() => []) : Promise.resolve([]),
+    apiGet('/api/attendance').catch(() => []),
   ])
 
   const studentAllocations = (allocations || []).filter((a) => String(a.studentId) === id)
   const allocation = studentAllocations.find((a) => a.active) || studentAllocations[0] || null
   const studentComplaints = (complaints || []).filter((c) => String(c.studentId) === id)
   const fees = (feeSummaries || []).find((f) => String(f.studentId) === id) || null
+  const studentAttendance = (attendance || []).filter((a) => String(a.studentId) === id)
 
   return {
     student,
     allocation,
+    allocations: studentAllocations,
     complaints: studentComplaints,
     fees,
     feeDetails: feeDetails || [],
+    attendance: studentAttendance,
   }
 }
 

@@ -1,60 +1,51 @@
-import { useEffect, useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+﻿import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { LogOut, UserRound } from 'lucide-react'
 import HostelLogo from '../HostelLogo'
 import DarkModeToggle from '../DarkModeToggle'
 import NotificationBell from '../notifications/NotificationBell'
 import { useDarkMode } from '../../hooks/useDarkMode'
 import { useHostelConfig } from '../../context/HostelConfigContext'
-import { clearSession, getSession } from '../../utils/auth'
+import { apiGet } from '../../utils/api'
+import { clearSession, getSession, getToken, saveSession } from '../../utils/auth'
+
+const STAFF_NAV = [
+  { to: '/app', label: 'Dashboard', end: true },
+  { to: '/app/add-user', label: 'Add User' },
+  {
+    label: 'Management',
+    children: [
+      { to: '/app/users?role=ADMIN', label: 'Admins' },
+      { to: '/app/users?role=WARDEN', label: 'Wardens' },
+      { to: '/app/users?role=STUDENT', label: 'Students' },
+      { to: '/app/residents', label: 'Residents' },
+      { to: '/app/rooms', label: 'Rooms' },
+      { to: '/app/admissions', label: 'Admissions' },
+      { to: '/app/allocations', label: 'Allocations' },
+    ],
+  },
+  {
+    label: 'Finance',
+    children: [
+      { to: '/app/fees', label: 'Fees' },
+      { to: '/app/expenses', label: 'Expenses' },
+    ],
+  },
+  {
+    label: 'Communication',
+    children: [
+      { to: '/app/notices', label: 'Notice' },
+      { to: '/app/complaints', label: 'Complaints' },
+    ],
+  },
+  { to: '/app/occupancy', label: 'Reports' },
+  { to: '/app/attendance', label: 'Attendance' },
+  { to: '/app/activity', label: 'Activity' },
+]
 
 const ROLE_NAV = {
-  SUPER_ADMIN: [
-    { to: '/app', label: 'Dashboard', end: true },
-    {
-      label: 'Management',
-      children: [
-        { to: '/app/users?role=ADMIN', label: 'Admins' },
-        { to: '/app/users?role=STUDENT', label: 'Students' },
-        { to: '/app/rooms', label: 'Rooms' },
-        { to: '/app/admissions', label: 'Admissions' },
-        { to: '/app/allocations', label: 'Allocations' },
-      ],
-    },
-    {
-      label: 'Finance',
-      children: [{ to: '/app/fees', label: 'Fees' }],
-    },
-    {
-      label: 'Communication',
-      children: [{ to: '/app/notices', label: 'Notice' }],
-    },
-    { to: '/app/occupancy', label: 'Reports' },
-  ],
-  ADMIN: [
-    { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/add-user', label: 'Add User' },
-    {
-      label: 'Management',
-      children: [
-        { to: '/app/rooms', label: 'Rooms' },
-        { to: '/app/admissions', label: 'Admissions' },
-        { to: '/app/allocations', label: 'Allocations' },
-      ],
-    },
-    {
-      label: 'Finance',
-      children: [{ to: '/app/fees', label: 'Fees' }],
-    },
-    {
-      label: 'Communication',
-      children: [
-        { to: '/app/notices', label: 'Notice' },
-        { to: '/app/complaints', label: 'Complaints' },
-      ],
-    },
-    { to: '/app/occupancy', label: 'Reports' },
-    { to: '/app/attendance', label: 'Attendance' },
-  ],
+  SUPER_ADMIN: STAFF_NAV,
+  ADMIN: STAFF_NAV,
   WARDEN: [
     { to: '/app', label: 'Dashboard', end: true },
     {
@@ -62,6 +53,7 @@ const ROLE_NAV = {
       children: [
         { to: '/app/rooms', label: 'Rooms' },
         { to: '/app/occupancy', label: 'Occupancy' },
+        { to: '/app/residents', label: 'Residents' },
         { to: '/app/users?role=STUDENT', label: 'Students' },
       ],
     },
@@ -73,6 +65,7 @@ const ROLE_NAV = {
       ],
     },
     { to: '/app/attendance', label: 'Attendance' },
+    { to: '/app/activity', label: 'Activity' },
   ],
   STUDENT: [
     { to: '/app', label: 'Dashboard', end: true },
@@ -90,7 +83,7 @@ const ROLE_NAV = {
         { to: '/app/notices', label: 'Notice' },
       ],
     },
-    { to: '/app/profile', label: 'Profile' },
+    { to: '/app/activity', label: 'Activity' },
   ],
 }
 
@@ -168,9 +161,7 @@ function NavGroup({ group, pathname, search, onNavigate }) {
         </svg>
       </button>
       {open && (
-        <div
-          className="ml-3 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700 motion-safe:animate-[fade-in-up_0.2s_ease-out]"
-        >
+        <div className="ml-3 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700 motion-safe:animate-[fade-in-up_0.2s_ease-out]">
           {group.children.map((child) => {
             const active = isNavActive(child, pathname, search)
             return (
@@ -196,7 +187,7 @@ function NavGroup({ group, pathname, search, onNavigate }) {
 }
 
 export default function AppShell() {
-  const user = getSession()
+  const [user, setUser] = useState(() => getSession())
   const navigate = useNavigate()
   const location = useLocation()
   const { dark, toggle } = useDarkMode()
@@ -204,6 +195,24 @@ export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const items = useMemo(() => ROLE_NAV[user?.role] || ROLE_NAV.STUDENT, [user?.role])
   const isDashboard = location.pathname === '/app' || location.pathname === '/app/'
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const me = await apiGet('/api/auth/me')
+        if (cancelled || !me) return
+        const remember = Boolean(localStorage.getItem('hms_token'))
+        saveSession({ token: getToken(), user: me }, remember)
+        setUser(me)
+      } catch {
+        /* keep cached session */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSignOut = () => {
     clearSession()
@@ -256,16 +265,6 @@ export default function AppShell() {
             ),
           )}
         </nav>
-
-        <div className="border-t border-slate-200/80 p-3 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Sign out
-          </button>
-        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -278,21 +277,55 @@ export default function AppShell() {
               aria-label="Open menu"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                {user?.fullName || user?.email || 'User'}
-              </p>
-              <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
-                {ROLE_BADGE[user?.role] || user?.role}
-              </span>
+            <div className="flex items-center gap-2">
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt=""
+                  className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                />
+              ) : (
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UserRound className="h-4 w-4" />
+                </span>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {user?.fullName || user?.email || 'User'}
+                </p>
+                <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
+                  {ROLE_BADGE[user?.role] || user?.role}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {!isDashboard && <NotificationBell variant="shell" />}
             <DarkModeToggle dark={dark} onToggle={toggle} label="Dark mode" />
+            <Link
+              to="/app/profile"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              title="Profile"
+            >
+              <UserRound className="h-4 w-4" />
+              <span className="hidden sm:inline">Profile</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </header>
 

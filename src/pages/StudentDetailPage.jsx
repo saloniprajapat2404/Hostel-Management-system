@@ -71,10 +71,39 @@ export default function StudentDetailPage() {
   if (error) return <ErrorBlock message={error} onRetry={load} />
   if (!data?.student) return <EmptyBlock message="Student not found." />
 
-  const { student, allocation, complaints, fees, feeDetails } = data
+  const { student, allocation, allocations = [], complaints, fees, feeDetails, attendance = [] } = data
   const address = [student.addressLine, student.city, student.state, student.pincode]
     .filter(Boolean)
     .join(', ')
+
+  const history = [
+    ...allocations.map((a) => ({
+      id: `alloc-${a.id}`,
+      type: 'Allocation',
+      title: a.active ? `Allocated to room ${a.roomNumber}` : `Vacated room ${a.roomNumber}`,
+      at: a.allocatedAt,
+    })),
+    ...complaints.map((c) => ({
+      id: `cmp-${c.id}`,
+      type: 'Complaint',
+      title: `${c.title} (${c.status})`,
+      at: c.createdAt,
+    })),
+    ...(feeDetails || []).flatMap((fee) =>
+      (fee.payments || []).map((p) => ({
+        id: `pay-${p.id}`,
+        type: 'Fee payment',
+        title: `₹${Number(p.amount || 0).toLocaleString('en-IN')} · ${fee.feeType}`,
+        at: p.paidAt,
+      })),
+    ),
+    ...attendance.map((a) => ({
+      id: `att-${a.id}`,
+      type: 'Attendance',
+      title: a.type || a.status || 'Check-in/out',
+      at: a.timestamp || a.createdAt,
+    })),
+  ].sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
 
   return (
     <div>
@@ -199,6 +228,27 @@ export default function StudentDetailPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+            Overall student history
+          </h2>
+          {history.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No history recorded yet.</p>
+          ) : (
+            <Table headers={['Type', 'Event', 'When']}>
+              {history.map((h) => (
+                <tr key={h.id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-4 py-3 font-medium">{h.type}</td>
+                  <td className="px-4 py-3 text-slate-900 dark:text-white">{h.title}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    {h.at ? new Date(h.at).toLocaleString('en-IN') : '—'}
                   </td>
                 </tr>
               ))}

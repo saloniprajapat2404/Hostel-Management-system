@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost } from '../utils/api'
-import { refreshNotifications } from '../utils/notifications'
 import { getSession } from '../utils/auth'
-import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
+import ListToolbar, { useListControls } from '../components/ListToolbar'
 import {
   ActionButton,
   Card,
   EmptyBlock,
   ErrorBlock,
   Field,
-  FilterSelect,
   fieldClass,
   LoadingBlock,
   PageHeader,
-  SearchInput,
-  Table,
-  TableToolbar,
 } from '../components/ui/Page'
+
+function whatsappShareUrl(title, body) {
+  const text = `*${title}*\n\n${body}\n\n— Takshak Hostel Notice`
+  return `https://wa.me/?text=${encodeURIComponent(text)}`
+}
 
 export default function NoticesPage() {
   const session = getSession()
@@ -28,11 +28,8 @@ export default function NoticesPage() {
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [shareWhatsApp, setShareWhatsApp] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [sortKey, setSortKey] = useState('createdAt')
-  const [sortDir, setSortDir] = useState('desc')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,17 +47,26 @@ export default function NoticesPage() {
     load()
   }, [load])
 
+  const { search, setSearch, sortKey, setSortKey, sortDir, setSortDir, filtered } = useListControls(items, {
+    searchKeys: ['title', 'body', 'createdByName'],
+    initialSortKey: 'createdAt',
+    getSortValue: (item, key) =>
+      key === 'createdAt' ? new Date(item.createdAt || 0).getTime() : item[key],
+  })
+
   const handleCreate = async (e) => {
     e.preventDefault()
     setSaving(true)
     setError('')
     try {
       await apiPost('/api/notices', { title, body })
+      if (shareWhatsApp) {
+        window.open(whatsappShareUrl(title, body), '_blank', 'noopener,noreferrer')
+      }
       setTitle('')
       setBody('')
       setShowForm(false)
       await load()
-      refreshNotifications()
     } catch (err) {
       setError(err.message || 'Create failed')
     } finally {
@@ -78,48 +84,28 @@ export default function NoticesPage() {
     }
   }
 
-  const displayedItems = useMemo(() => {
-    const filtered = items.filter((item) => {
-      const matchesStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && item.active !== false) ||
-        (statusFilter === 'INACTIVE' && item.active === false)
-      const matchesQuery = matchesSearch(search, [item.title, item.body, item.createdByName])
-      return matchesStatus && matchesQuery
-    })
-    return sortRows(filtered, sortKey, sortDir, (item) => item[sortKey])
-  }, [items, search, statusFilter, sortKey, sortDir])
-
-  const handleSort = (key) => {
-    const next = toggleSort(sortKey, sortDir, key)
-    setSortKey(next.sortKey)
-    setSortDir(next.sortDir)
-  }
-
-  const columns = [
-    { key: 'title', label: 'Title' },
-    { key: 'createdByName', label: 'Author' },
-    { key: 'createdAt', label: 'Created' },
-  ]
-
   return (
     <div>
       <PageHeader
         title="Notice"
-        subtitle="Hostel announcements and updates."
+        subtitle="Hostel announcements, alerts, and WhatsApp sharing."
         actions={
           canCreate ? (
-            <ActionButton onClick={() => setShowForm(true)}>New Notice</ActionButton>
+            <ActionButton onClick={() => setShowForm(true)}>New notice</ActionButton>
           ) : null
         }
       />
 
-      {error && <div className="mb-4"><ErrorBlock message={error} onRetry={load} /></div>}
+      {error && (
+        <div className="mb-4">
+          <ErrorBlock message={error} onRetry={load} />
+        </div>
+      )}
       {loading && <LoadingBlock />}
 
       {showForm && canCreate && (
         <Card className="mb-6">
-          <h2 className="mb-4 text-lg font-semibold">Create Notice</h2>
+          <h2 className="mb-4 text-lg font-semibold">Create notice / alert</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <Field label="Title">
               <input className={fieldClass} required value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -132,66 +118,76 @@ export default function NoticesPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
             </Field>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={shareWhatsApp}
+                onChange={(e) => setShareWhatsApp(e.target.checked)}
+              />
+              Share via WhatsApp after publishing
+            </label>
             <div className="flex gap-2">
-              <ActionButton type="submit" disabled={saving}>{saving ? 'Publishing…' : 'Publish'}</ActionButton>
-              <ActionButton variant="ghost" onClick={() => setShowForm(false)}>Cancel</ActionButton>
+              <ActionButton type="submit" disabled={saving}>
+                {saving ? 'Publishing…' : 'Publish'}
+              </ActionButton>
+              <ActionButton variant="ghost" onClick={() => setShowForm(false)}>
+                Cancel
+              </ActionButton>
             </div>
           </form>
         </Card>
       )}
 
-      {!loading && items.length === 0 && <EmptyBlock message="No Notice yet." />}
+      {!loading && (
+        <ListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search notice…"
+          sortOptions={[
+            { value: 'createdAt', label: 'Sort by date' },
+            { value: 'title', label: 'Sort by title' },
+          ]}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSortKeyChange={setSortKey}
+          onSortDirChange={setSortDir}
+        />
+      )}
 
-      {!loading && items.length > 0 && (
-        <>
-          <TableToolbar>
-            <SearchInput value={search} onChange={setSearch} placeholder="Search title, body, author…" />
-            <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-              <option value="ALL">All statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </FilterSelect>
-          </TableToolbar>
+      {!loading && filtered.length === 0 && <EmptyBlock message="No notice yet." />}
 
-          {displayedItems.length === 0 ? (
-            <EmptyBlock message="No Notice matches your filters." />
-          ) : (
-            <div className="space-y-4">
-              {displayedItems.map((n) => (
-                <Card key={n.id}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{n.title}</h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {n.createdByName || 'Staff'} · {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
-                      </p>
-                    </div>
-                    {canDelete && (
-                      <ActionButton variant="danger" onClick={() => handleDelete(n.id)}>Delete</ActionButton>
-                    )}
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{n.body}</p>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {displayedItems.length > 0 && (
-            <div className="mt-6">
-              <Table sortableHeaders={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-                {displayedItems.map((n) => (
-                  <tr key={`row-${n.id}`}>
-                    <td className="px-4 py-3 font-medium">{n.title}</td>
-                    <td className="px-4 py-3">{n.createdByName}</td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {n.createdAt ? new Date(n.createdAt).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            </div>
-          )}
-        </>
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-4">
+          {filtered.map((n) => (
+            <Card key={n.id}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{n.title}</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {n.createdByName || 'Staff'} ·{' '}
+                    {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={whatsappShareUrl(n.title, n.body)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  >
+                    WhatsApp
+                  </a>
+                  {canDelete && (
+                    <ActionButton variant="danger" onClick={() => handleDelete(n.id)}>
+                      Delete
+                    </ActionButton>
+                  )}
+                </div>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{n.body}</p>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )

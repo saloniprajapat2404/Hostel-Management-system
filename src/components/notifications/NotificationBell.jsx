@@ -247,15 +247,14 @@ export default function NotificationBell({ variant = 'dashboard' }) {
             >
               Notifications
             </p>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="text-[12px] font-medium text-[#3B82F6] hover:underline"
-              >
-                Mark all read
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={unreadCount === 0}
+              className="text-[12px] font-medium text-[#3B82F6] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Mark All As Read
+            </button>
           </div>
 
           <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
@@ -284,7 +283,7 @@ export default function NotificationBell({ variant = 'dashboard' }) {
                   isShell ? 'divide-slate-200 dark:divide-slate-700' : 'divide-[color:var(--dash-border-subtle,rgb(226_232_240))]',
                 ].join(' ')}
               >
-                {items.map((item) => (
+                {items.slice(0, 6).map((item) => (
                   <li key={item.id}>
                     <NotificationRow item={item} onOpen={handleOpen} variant={variant} />
                   </li>

@@ -78,7 +78,7 @@ export default function AddUserPage() {
   return (
     <div>
       <PageHeader
-        title="Add User"
+        title="Add User (Student / Warden)"
         subtitle="Create a new student or warden account from one place."
       />
 
