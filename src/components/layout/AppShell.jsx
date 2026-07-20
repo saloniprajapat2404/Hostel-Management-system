@@ -25,10 +25,7 @@ const ADMIN_NAV = [
   },
   {
     label: 'Finance',
-    children: [
-      { to: '/app/fees', label: 'Fees' },
-      { to: '/app/expenses', label: 'Expenses' },
-    ],
+    children: [{ to: '/app/fees', label: 'Fees' }],
   },
   {
     label: 'Communication',
@@ -59,10 +56,7 @@ const SUPER_ADMIN_NAV = [
   },
   {
     label: 'Finance',
-    children: [
-      { to: '/app/fees', label: 'Fees' },
-      { to: '/app/expenses', label: 'Expenses' },
-    ],
+    children: [{ to: '/app/fees', label: 'Fees' }],
   },
   {
     label: 'Communication',

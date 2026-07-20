@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, IndianRupee, UserRound } from 'lucide-react'
-import { apiDelete, apiGet, apiPost } from '../utils/api'
+import { apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import {
   ActionButton,
@@ -16,7 +16,6 @@ import {
   SearchInput,
   StatusBadge,
   Table,
-  TableToolbar,
 } from '../components/ui/Page'
 import { sortRows, toggleSort, matchesSearch } from '../utils/tableHelpers'
 
@@ -39,15 +38,6 @@ const emptyPaymentForm = {
   method: 'ONLINE',
   referenceNote: '',
 }
-
-const emptyExpenseForm = {
-  category: 'Maintenance',
-  description: '',
-  amount: '',
-  expenseDate: new Date().toISOString().slice(0, 10),
-}
-
-const EXPENSE_CATEGORIES = ['Maintenance', 'Utilities', 'Staff', 'Supplies', 'Other']
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
@@ -89,15 +79,12 @@ function StatCard({ label, value, tone = 'slate', hint }) {
 export default function FeesPage() {
   const role = getSession()?.role
   const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN'
-  const canManageExpenses = canManage
   const [searchParams, setSearchParams] = useSearchParams()
 
   const selectedId = searchParams.get('student')
 
   const [overview, setOverview] = useState(null)
   const [students, setStudents] = useState([])
-  const [expenses, setExpenses] = useState([])
-  const [totalExpenses, setTotalExpenses] = useState(0)
   const [studentFees, setStudentFees] = useState([])
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -111,12 +98,6 @@ export default function FeesPage() {
   const [saving, setSaving] = useState(false)
   const [sortKey, setSortKey] = useState('fullName')
   const [sortDir, setSortDir] = useState('asc')
-  const [showExpenseForm, setShowExpenseForm] = useState(false)
-  const [expenseForm, setExpenseForm] = useState(emptyExpenseForm)
-  const [expenseSortKey, setExpenseSortKey] = useState('expenseDate')
-  const [expenseSortDir, setExpenseSortDir] = useState('desc')
-  const [expenseSearch, setExpenseSearch] = useState('')
-  const [expenseError, setExpenseError] = useState('')
 
   const resetDetailForms = useCallback(() => {
     setShowFeeForm(false)
@@ -150,28 +131,7 @@ export default function FeesPage() {
     ])
     setOverview(overviewResult)
     setStudents(studentsResult || [])
-
-    if (!canManageExpenses) {
-      setExpenses([])
-      setTotalExpenses(0)
-      setExpenseError('')
-      return
-    }
-
-    setExpenseError('')
-    try {
-      const [expenseList, total] = await Promise.all([
-        apiGet('/api/expenses'),
-        apiGet('/api/expenses/total'),
-      ])
-      setExpenses(expenseList || [])
-      setTotalExpenses(Number(total?.totalExpenses || 0))
-    } catch (err) {
-      setExpenses([])
-      setTotalExpenses(0)
-      setExpenseError(err.message || 'Could not load expenses')
-    }
-  }, [canManageExpenses])
+  }, [])
 
   const refreshStudentFees = useCallback(async (studentId) => {
     if (!studentId) return
@@ -255,28 +215,10 @@ export default function FeesPage() {
     })
   }, [students, query, statusFilter, sortKey, sortDir])
 
-  const sortedExpenses = useMemo(() => {
-    const filtered = expenses.filter((expense) =>
-      matchesSearch(expenseSearch, [
-        expense.category,
-        expense.description,
-        expense.recordedByName,
-        expense.amount,
-      ]),
-    )
-    return sortRows(filtered, expenseSortKey, expenseSortDir, (expense) => expense[expenseSortKey])
-  }, [expenses, expenseSearch, expenseSortKey, expenseSortDir])
-
   const handleStudentSort = (key) => {
     const next = toggleSort(sortKey, sortDir, key)
     setSortKey(next.sortKey)
     setSortDir(next.sortDir)
-  }
-
-  const handleExpenseSort = (key) => {
-    const next = toggleSort(expenseSortKey, expenseSortDir, key)
-    setExpenseSortKey(next.sortKey)
-    setExpenseSortDir(next.sortDir)
   }
 
   const studentColumns = [
@@ -286,15 +228,6 @@ export default function FeesPage() {
     { key: 'balance', label: 'Balance' },
     { key: 'overallStatus', label: 'Status' },
     { key: 'lastPaymentMethod', label: 'Last method' },
-  ]
-
-  const expenseColumns = [
-    { key: 'expenseDate', label: 'Date' },
-    { key: 'category', label: 'Category' },
-    { key: 'description', label: 'Description' },
-    { key: 'amount', label: 'Amount' },
-    { key: 'recordedByName', label: 'Recorded by' },
-    { key: 'actions', label: 'Actions', sortable: false },
   ]
 
   const selectedStudent = useMemo(
@@ -337,7 +270,7 @@ export default function FeesPage() {
               </p>
             </div>
           </div>
-          <ActionButton onClick={() => setShowFeeForm(true)}>Add fee</ActionButton>
+          <ActionButton onClick={() => setShowFeeForm(true)}>Add fees</ActionButton>
         </div>
 
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -443,7 +376,7 @@ export default function FeesPage() {
                             type="number"
                             min="1"
                             max={fee.balanceAmount}
-                            className={fieldClass}
+                            className={`${fieldClass} input-no-spinner`}
                             placeholder="Amount"
                             required
                             value={paymentForm.amount}
@@ -581,37 +514,6 @@ export default function FeesPage() {
     }
   }
 
-  const handleCreateExpense = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      await apiPost('/api/expenses', {
-        category: expenseForm.category,
-        description: expenseForm.description || null,
-        amount: Number(expenseForm.amount),
-        expenseDate: expenseForm.expenseDate,
-      })
-      setExpenseForm(emptyExpenseForm)
-      setShowExpenseForm(false)
-      await refreshOverview()
-    } catch (err) {
-      setError(err.message || 'Failed to record expense')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDeleteExpense = async (id) => {
-    if (!window.confirm('Delete this expense?')) return
-    try {
-      await apiDelete(`/api/expenses/${id}`)
-      await refreshOverview()
-    } catch (err) {
-      setError(err.message || 'Failed to delete expense')
-    }
-  }
-
   if (!canManage) {
     return (
       <div>
@@ -625,7 +527,7 @@ export default function FeesPage() {
     <div>
       <PageHeader
         title="Fees management"
-        subtitle="Track student fees, payments, and hostel operating expenses."
+        subtitle="Track student fees and payment records."
       />
 
       {error && (
@@ -645,7 +547,7 @@ export default function FeesPage() {
 
       {!loading && overview && (
         <>
-          <div className={`mb-6 grid gap-3 sm:grid-cols-2 ${canManageExpenses ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Total students"
               value={overview.totalStudents}
@@ -670,127 +572,7 @@ export default function FeesPage() {
               tone="teal"
               hint="Students fully paid"
             />
-            {canManageExpenses && (
-              <StatCard
-                label="Total expenses"
-                value={formatCurrency(totalExpenses)}
-                tone="red"
-                hint="Hostel operating costs"
-              />
-            )}
           </div>
-
-          {canManageExpenses && (
-            <Card className="mb-6">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Expenses</h2>
-                  <p className="text-sm text-slate-500">
-                    Hostel operating expenses · Total {formatCurrency(totalExpenses)}
-                  </p>
-                </div>
-                <ActionButton onClick={() => setShowExpenseForm(true)}>Add expense</ActionButton>
-              </div>
-
-              {expenseError && (
-                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
-                  {expenseError}
-                </p>
-              )}
-
-              {showExpenseForm && (
-                <form onSubmit={handleCreateExpense} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                  <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">New expense</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Category">
-                      <select
-                        className={fieldClass}
-                        value={expenseForm.category}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                      >
-                        {EXPENSE_CATEGORIES.map((category) => (
-                          <option key={category} value={category}>{category}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Date">
-                      <input
-                        type="date"
-                        className={fieldClass}
-                        required
-                        value={expenseForm.expenseDate}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="Amount (₹)">
-                      <input
-                        type="number"
-                        min="1"
-                        className={fieldClass}
-                        required
-                        value={expenseForm.amount}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="Description">
-                      <input
-                        className={fieldClass}
-                        value={expenseForm.description}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <ActionButton type="submit" disabled={saving}>
-                      {saving ? 'Saving…' : 'Save expense'}
-                    </ActionButton>
-                    <ActionButton variant="ghost" onClick={() => setShowExpenseForm(false)}>Cancel</ActionButton>
-                  </div>
-                </form>
-              )}
-
-              {sortedExpenses.length === 0 ? (
-                <EmptyBlock message={expenses.length === 0 ? 'No expenses recorded yet.' : 'No expenses match your search.'} />
-              ) : (
-                <>
-                  <TableToolbar className="mb-3">
-                    <SearchInput
-                      value={expenseSearch}
-                      onChange={setExpenseSearch}
-                      placeholder="Search category, description…"
-                    />
-                  </TableToolbar>
-                  <Table
-                  sortableHeaders={expenseColumns}
-                  sortKey={expenseSortKey}
-                  sortDir={expenseSortDir}
-                  onSort={handleExpenseSort}
-                >
-                  {sortedExpenses.map((expense) => (
-                    <tr key={expense.id}>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                        {expense.expenseDate
-                          ? new Date(expense.expenseDate).toLocaleDateString('en-IN')
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{expense.category}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{expense.description || '—'}</td>
-                      <td className="px-4 py-3 font-medium text-red-700 dark:text-red-300">
-                        {formatCurrency(expense.amount)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{expense.recordedByName || '—'}</td>
-                      <td className="px-4 py-3">
-                        <ActionButton variant="danger" onClick={() => handleDeleteExpense(expense.id)}>
-                          Delete
-                        </ActionButton>
-                      </td>
-                    </tr>
-                  ))}
-                </Table>
-                </>
-              )}
-            </Card>
-          )}
 
           {selectedId ? (
             renderStudentDetail()

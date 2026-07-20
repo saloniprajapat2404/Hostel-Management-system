@@ -36,8 +36,8 @@ export default function AllocationsPage() {
   const [statusFilter, setStatusFilter] = useState(() =>
     params.get('status')?.toUpperCase() === 'ACTIVE' ? 'ACTIVE' : 'ALL',
   )
-  const [sortKey, setSortKey] = useState('allocatedAt')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortKey, setSortKey] = useState('studentCode')
+  const [sortDir, setSortDir] = useState('asc')
 
   const vacantBeds = useMemo(() => {
     const beds = []
@@ -136,6 +136,7 @@ export default function AllocationsPage() {
     return sortRows(filtered, sortKey, sortDir, (allocation) => {
       if (sortKey === 'roomBed') return `${allocation.roomNumber} ${allocation.bedLabel}`
       if (sortKey === 'active') return allocation.active ? 1 : 0
+      if (sortKey === 'studentCode') return allocation.studentCode || allocation.studentName
       return allocation[sortKey]
     })
   }, [allocations, search, statusFilter, sortKey, sortDir])

@@ -348,6 +348,17 @@
   @apply relative mt-4 overflow-hidden rounded-[14px] bg-gradient-to-r from-[#3B82F6] to-[#2563EB] px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-[#3B82F6]/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6];
 }
 
+.input-no-spinner::-webkit-outer-spin-button,
+.input-no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input-no-spinner[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-fade-in-up,

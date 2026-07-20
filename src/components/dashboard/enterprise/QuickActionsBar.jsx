@@ -6,7 +6,6 @@ import {
   Building2,
   IndianRupee,
   MessageSquarePlus,
-  Receipt,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -61,13 +60,6 @@ const ACTIONS = {
     icon: MessageSquarePlus,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'],
   },
-  expenses: {
-    label: 'Expenses',
-    hint: 'Record and view hostel operating expenses',
-    to: '/app/expenses',
-    icon: Receipt,
-    roles: ['ADMIN', 'SUPER_ADMIN'],
-  },
   addUser: {
     label: 'Add User',
     hint: 'Register admin, warden, or student accounts',
@@ -77,7 +69,7 @@ const ACTIONS = {
   },
 }
 
-/** Display order for quick access links (Expenses after Register Complaint). */
+/** Display order for quick access links. */
 const ACTION_ORDER = [
   'rooms',
   'residents',
@@ -86,7 +78,6 @@ const ACTION_ORDER = [
   'myFees',
   'addNotice',
   'registerComplaint',
-  'expenses',
   'addUser',
 ]
 

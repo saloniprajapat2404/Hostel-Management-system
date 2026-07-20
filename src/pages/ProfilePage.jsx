@@ -111,7 +111,6 @@ export default function ProfilePage() {
       setSaving(true)
       try {
         await persistProfile(nextForm)
-        setSuccess('Profile picture saved. It will stay after refresh.')
       } catch (err) {
         setError(err.message || 'Could not save profile picture')
       } finally {
