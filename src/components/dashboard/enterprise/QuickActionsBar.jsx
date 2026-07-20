@@ -68,6 +68,13 @@ const ACTIONS = {
     icon: Receipt,
     roles: ['ADMIN', 'SUPER_ADMIN'],
   },
+  addUser: {
+    label: 'Add User',
+    hint: 'Register admin, warden, or student accounts',
+    to: '/app/add-user',
+    icon: UserPlus,
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+  },
 }
 
 /** Display order for quick access links (Expenses after Register Complaint). */
@@ -80,12 +87,13 @@ const ACTION_ORDER = [
   'addNotice',
   'registerComplaint',
   'expenses',
+  'addUser',
 ]
 
 const iconClass =
   'h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#3B82F6] motion-reduce:transform-none'
 
-function QuickActionsBar({ role, addUserOpen = false, onAddUserToggle }) {
+function QuickActionsBar({ role }) {
   const items = useMemo(
     () =>
       ACTION_ORDER.map((key) => ACTIONS[key])
@@ -93,9 +101,8 @@ function QuickActionsBar({ role, addUserOpen = false, onAddUserToggle }) {
         .filter((action) => action.roles.includes(role)),
     [role],
   )
-  const canManageFinance = role === 'ADMIN' || role === 'SUPER_ADMIN'
 
-  if (!items.length && !canManageFinance) return null
+  if (!items.length) return null
 
   return (
     <section aria-label="Quick access">
@@ -112,23 +119,6 @@ function QuickActionsBar({ role, addUserOpen = false, onAddUserToggle }) {
             <span className="whitespace-nowrap">{label}</span>
           </Link>
         ))}
-
-        {canManageFinance && onAddUserToggle && (
-          <button
-            type="button"
-            onClick={onAddUserToggle}
-            aria-expanded={addUserOpen}
-            aria-controls="dashboard-add-user"
-            title="Register admin, warden, or student accounts"
-            className={[
-              'dashboard-quick-action group',
-              addUserOpen ? 'dashboard-quick-action-active' : '',
-            ].join(' ')}
-          >
-            <UserPlus className={iconClass} strokeWidth={2} />
-            <span className="whitespace-nowrap">Add User</span>
-          </button>
-        )}
       </div>
     </section>
   )

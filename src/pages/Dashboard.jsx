@@ -16,7 +16,6 @@ import DashboardStickyHeader from '../components/dashboard/enterprise/DashboardS
 import DashboardHero from '../components/dashboard/enterprise/DashboardHero'
 import CompactKpiGrid from '../components/dashboard/enterprise/CompactKpiGrid'
 import QuickActionsBar from '../components/dashboard/enterprise/QuickActionsBar'
-import AddUserDashboardPanel from '../components/dashboard/enterprise/AddUserDashboardPanel'
 import RecentActivityTimeline from '../components/dashboard/enterprise/RecentActivityTimeline'
 import StudentHistoryPanel from '../components/dashboard/enterprise/StudentHistoryPanel'
 import FeeCollectionPanel from '../components/dashboard/enterprise/FeeCollectionPanel'
@@ -76,9 +75,7 @@ export default function Dashboard() {
   const [feesLoading, setFeesLoading] = useState(false)
   const [activityLoading, setActivityLoading] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [addUserOpen, setAddUserOpen] = useState(false)
   const [error, setError] = useState('')
-  const canManageFinance = quickAccessRole === 'ADMIN' || quickAccessRole === 'SUPER_ADMIN'
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true)
@@ -242,14 +239,7 @@ export default function Dashboard() {
 
           {!statsLoading && stats && <CompactKpiGrid pills={kpis} />}
 
-          <QuickActionsBar
-            role={quickAccessRole}
-            addUserOpen={addUserOpen}
-            onAddUserToggle={() => setAddUserOpen((open) => !open)}
-          />
-          {canManageFinance && (
-            <AddUserDashboardPanel open={addUserOpen} onClose={() => setAddUserOpen(false)} />
-          )}
+          <QuickActionsBar role={quickAccessRole} />
 
           {!statsLoading && stats && (
             <>
