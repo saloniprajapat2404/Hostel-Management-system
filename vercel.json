@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api-production-527e.up.railway.app/api/:path*"
+      "destination": "https://takshak-hostel-api-production.up.railway.app/api/:path*"
     },
     {
       "source": "/(.*)",
