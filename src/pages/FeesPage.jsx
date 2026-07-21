@@ -235,6 +235,29 @@ export default function FeesPage() {
     [students, selectedId],
   )
 
+  const detailTotals = useMemo(() => {
+    const totalFees = studentFees.reduce((sum, fee) => sum + Number(fee.totalAmount || 0), 0)
+    const totalPaid = studentFees.reduce((sum, fee) => sum + Number(fee.paidAmount || 0), 0)
+    const balance = studentFees.reduce((sum, fee) => sum + Number(fee.balanceAmount || 0), 0)
+    return { totalFees, totalPaid, balance }
+  }, [studentFees])
+
+  const duplicateFeeSelection = useMemo(
+    () =>
+      studentFees.some(
+        (fee) =>
+          fee.feeType === feeForm.feeType &&
+          fee.academicYear.trim() === feeForm.academicYear.trim(),
+      ),
+    [studentFees, feeForm.feeType, feeForm.academicYear],
+  )
+
+  const openAddFeeForm = useCallback(() => {
+    setFeeForm(emptyFeeForm)
+    setError('')
+    setShowFeeForm(true)
+  }, [])
+
   const renderStudentDetail = () => {
     if (!selectedId) return null
 
@@ -270,20 +293,49 @@ export default function FeesPage() {
               </p>
             </div>
           </div>
-          <ActionButton onClick={() => setShowFeeForm(true)}>Add fees</ActionButton>
+          <ActionButton onClick={openAddFeeForm}>Add fees</ActionButton>
         </div>
 
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <StatCard label="Total fees" value={formatCurrency(selectedStudent.totalFees)} />
-          <StatCard label="Paid" value={formatCurrency(selectedStudent.totalPaid)} tone="green" />
-          <StatCard label="Balance" value={formatCurrency(selectedStudent.balance)} tone="amber" />
+          <StatCard
+            label="Total fees"
+            value={formatCurrency(
+              detailLoading || studentFees.length === 0
+                ? selectedStudent.totalFees
+                : detailTotals.totalFees,
+            )}
+          />
+          <StatCard
+            label="Paid"
+            value={formatCurrency(
+              detailLoading || studentFees.length === 0
+                ? selectedStudent.totalPaid
+                : detailTotals.totalPaid,
+            )}
+            tone="green"
+          />
+          <StatCard
+            label="Balance"
+            value={formatCurrency(
+              detailLoading || studentFees.length === 0
+                ? selectedStudent.balance
+                : detailTotals.balance,
+            )}
+            tone="amber"
+          />
         </div>
 
         {showFeeForm && (
           <form onSubmit={handleCreateFee} className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
             <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">New fee record</h3>
+            {duplicateFeeSelection && (
+              <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                {feeForm.feeType} for {feeForm.academicYear} already exists for this student. Choose a
+                different fee type or academic year.
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Fee type">
+              <Field label="Fee type" required>
                 <select
                   className={fieldClass}
                   value={feeForm.feeType}
@@ -294,7 +346,7 @@ export default function FeesPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Academic year">
+              <Field label="Academic year" required>
                 <input
                   className={fieldClass}
                   required
@@ -302,11 +354,13 @@ export default function FeesPage() {
                   onChange={(e) => setFeeForm({ ...feeForm, academicYear: e.target.value })}
                 />
               </Field>
-              <Field label="Total amount (₹)">
+              <Field label="Total amount (₹)" required>
                 <input
                   type="number"
                   min="1"
-                  className={fieldClass}
+                  step="1"
+                  className={`${fieldClass} input-no-spinner`}
+                  placeholder="Enter amount"
                   required
                   value={feeForm.totalAmount}
                   onChange={(e) => setFeeForm({ ...feeForm, totalAmount: e.target.value })}
@@ -322,7 +376,7 @@ export default function FeesPage() {
               </Field>
             </div>
             <div className="mt-3 flex gap-2">
-              <ActionButton type="submit" disabled={saving}>
+              <ActionButton type="submit" disabled={saving || duplicateFeeSelection}>
                 {saving ? 'Saving…' : 'Create fee'}
               </ActionButton>
               <ActionButton variant="ghost" onClick={() => setShowFeeForm(false)}>Cancel</ActionButton>
@@ -372,31 +426,35 @@ export default function FeesPage() {
                           Record payment
                         </p>
                         <div className="grid gap-2 sm:grid-cols-3">
-                          <input
-                            type="number"
-                            min="1"
-                            max={fee.balanceAmount}
-                            className={`${fieldClass} input-no-spinner`}
-                            placeholder="Amount"
-                            required
-                            value={paymentForm.amount}
-                            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                          />
-                          <select
-                            className={fieldClass}
-                            value={paymentForm.method}
-                            onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                          >
-                            {PAYMENT_METHODS.map((m) => (
-                              <option key={m.value} value={m.value}>{m.label}</option>
-                            ))}
-                          </select>
-                          <input
-                            className={fieldClass}
-                            placeholder="Reference / note"
-                            value={paymentForm.referenceNote}
-                            onChange={(e) => setPaymentForm({ ...paymentForm, referenceNote: e.target.value })}
-                          />
+                          <Field label="Amount (₹)" required>
+                            <input
+                              type="number"
+                              min="1"
+                              max={fee.balanceAmount}
+                              className={`${fieldClass} input-no-spinner`}
+                              required
+                              value={paymentForm.amount}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                            />
+                          </Field>
+                          <Field label="Payment method">
+                            <select
+                              className={fieldClass}
+                              value={paymentForm.method}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                            >
+                              {PAYMENT_METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Reference / note">
+                            <input
+                              className={fieldClass}
+                              value={paymentForm.referenceNote}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, referenceNote: e.target.value })}
+                            />
+                          </Field>
                         </div>
                         <div className="mt-2 flex gap-2">
                           <ActionButton type="submit" disabled={saving}>
@@ -472,13 +530,22 @@ export default function FeesPage() {
   const handleCreateFee = async (e) => {
     e.preventDefault()
     if (!selectedId) return
+    if (duplicateFeeSelection) {
+      setError(`${feeForm.feeType} for ${feeForm.academicYear} already exists for this student.`)
+      return
+    }
+    const amount = Number(feeForm.totalAmount)
+    if (!Number.isFinite(amount) || amount < 1) {
+      setError('Enter a valid fee amount of at least ₹1.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
       await apiPost(`/api/fees/students/${selectedId}`, {
         feeType: feeForm.feeType,
         academicYear: feeForm.academicYear,
-        totalAmount: Number(feeForm.totalAmount),
+        totalAmount: amount,
         dueDate: feeForm.dueDate || null,
       })
       setFeeForm(emptyFeeForm)

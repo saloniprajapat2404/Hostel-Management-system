@@ -137,7 +137,7 @@ export default function AttendancePage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">Check-in / Check-out</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Student">
+            <Field label="Student" required>
               <select className={fieldClass} required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
                 <option value="">Select student</option>
                 {studentOptions.map((s) => (
@@ -147,7 +147,7 @@ export default function AttendancePage() {
                 ))}
               </select>
             </Field>
-            <Field label="Type">
+            <Field label="Type" required>
               <select className={fieldClass} value={type} onChange={(e) => setType(e.target.value)}>
                 <option value="CHECK_IN">CHECK_IN</option>
                 <option value="CHECK_OUT">CHECK_OUT</option>

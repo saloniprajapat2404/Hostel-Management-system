@@ -175,7 +175,7 @@ export default function AllocationsPage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">Allocate bed</h2>
           <form onSubmit={handleAllocate} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Student">
+            <Field label="Student" required>
               <select className={fieldClass} required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
                 <option value="">Select student</option>
                 {availableStudents.map((s) => (
@@ -185,7 +185,7 @@ export default function AllocationsPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Vacant bed">
+            <Field label="Vacant bed" required>
               <select className={fieldClass} required value={bedId} onChange={(e) => setBedId(e.target.value)}>
                 <option value="">Select bed</option>
                 {vacantBeds.map((b) => (

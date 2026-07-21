@@ -5,6 +5,7 @@ import com.takshak.hostel.entity.Allocation;
 import com.takshak.hostel.entity.Bed;
 import com.takshak.hostel.entity.Complaint;
 import com.takshak.hostel.entity.Expense;
+import com.takshak.hostel.entity.Notice;
 import com.takshak.hostel.entity.Room;
 import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.entity.SystemSetting;
@@ -12,6 +13,10 @@ import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.AdmissionStatus;
 import com.takshak.hostel.enums.ComplaintStatus;
 import com.takshak.hostel.enums.FeeStatus;
+import com.takshak.hostel.enums.NoticeCategory;
+import com.takshak.hostel.enums.NoticeStatus;
+import com.takshak.hostel.enums.NoticeTargetAudience;
+import com.takshak.hostel.enums.NotificationType;
 import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
@@ -24,6 +29,7 @@ import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.SystemSettingRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.repository.NotificationRepository;
+import com.takshak.hostel.service.NotificationService;
 import com.takshak.hostel.service.StudentFeeService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -53,6 +59,7 @@ public class DataSeeder implements CommandLineRunner {
     private final StudentFeeRepository studentFeeRepository;
     private final StudentFeeService studentFeeService;
     private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final ExpenseRepository expenseRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -67,6 +74,7 @@ public class DataSeeder implements CommandLineRunner {
             StudentFeeRepository studentFeeRepository,
             StudentFeeService studentFeeService,
             NotificationRepository notificationRepository,
+            NotificationService notificationService,
             ExpenseRepository expenseRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -79,6 +87,7 @@ public class DataSeeder implements CommandLineRunner {
         this.studentFeeRepository = studentFeeRepository;
         this.studentFeeService = studentFeeService;
         this.notificationRepository = notificationRepository;
+        this.notificationService = notificationService;
         this.expenseRepository = expenseRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -209,7 +218,7 @@ public class DataSeeder implements CommandLineRunner {
         systemSettingRepository.save(new SystemSetting("bedsPerRoom", "2"));
 
         seedFeesForStudents(students);
-        ensureExpenses();
+        ensureNotifications();
 
         log.info("Seed complete: users={}, rooms=30, allocations=15 (admin={}, superAdmin={})",
                 userRepository.count(), admin.getEmail(), superAdmin.getEmail());
@@ -227,33 +236,68 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void ensureNotifications() {
-        removeSeededDemoNotifications();
-        removeSeededDemoNotices();
         ensureExpenses();
+        seedDummyNotices();
     }
 
-    private void removeSeededDemoNotices() {
-        List<String> demoTitles = List.of(
+    private void seedDummyNotices() {
+        User creator = userRepository.findByEmailIgnoreCase("admin@takshak.edu")
+                .or(() -> userRepository.findByEmailIgnoreCase("superadmin@takshak.edu"))
+                .orElse(null);
+        if (creator == null) {
+            return;
+        }
+
+        seedNoticeIfMissing(
+                creator,
                 "Welcome to Takshak Hostel",
+                "Please read hostel timings, visitor rules, and mess schedule on the notice board.",
+                NoticeCategory.GENERAL);
+        seedNoticeIfMissing(
+                creator,
                 "Mess Menu Update",
-                "Maintenance Window");
-        noticeRepository.findAll().stream()
-                .filter(notice -> demoTitles.contains(notice.getTitle()))
-                .forEach(noticeRepository::delete);
+                "Updated mess menu for this week is available. Lunch timing remains 12:30 PM to 2:00 PM.",
+                NoticeCategory.EVENT);
     }
 
-    private void removeSeededDemoNotifications() {
-        List<String> demoMessages = List.of(
-                "Rahul Sharma submitted an admission request",
-                "Broken fan in room — needs attention",
-                "Mess Menu Update is now live",
-                "Wi-Fi connectivity issue reported on floor 1",
-                "Maintenance Window scheduled for Sunday",
-                "₹10,000 hostel fee payment recorded",
-                "Welcome notice — read hostel timings");
-        notificationRepository.findAll().stream()
-                .filter(notification -> demoMessages.contains(notification.getMessage()))
-                .forEach(notificationRepository::delete);
+    private void seedNoticeIfMissing(User creator, String title, String description, NoticeCategory category) {
+        boolean exists = noticeRepository.findAll().stream()
+                .anyMatch(notice -> title.equals(notice.getTitle()));
+        if (exists) {
+            return;
+        }
+
+        Notice notice = new Notice();
+        notice.setTitle(title);
+        notice.setDescription(description);
+        notice.setCategory(category);
+        notice.setTargetAudience(NoticeTargetAudience.ALL_STUDENTS);
+        notice.setCreatedById(creator.getId());
+        notice.setCreatedByName(creator.getFullName());
+        notice.setStatus(NoticeStatus.ACTIVE);
+        notice.setCreatedAt(Instant.now());
+        noticeRepository.save(notice);
+
+        String message = title + " is now live";
+        userRepository.findAll().stream()
+                .filter(User::isActive)
+                .forEach(user -> {
+                    boolean alreadyNotified = notificationRepository.findAll().stream()
+                            .anyMatch(notification ->
+                                    user.getId().equals(notification.getUserId())
+                                            && message.equals(notification.getMessage())
+                                            && notification.getType() == NotificationType.NOTICE);
+                    if (!alreadyNotified) {
+                        notificationService.notifyUser(
+                                user,
+                                "New notice",
+                                message,
+                                NotificationType.NOTICE,
+                                "/app/notices");
+                    }
+                });
+
+        log.info("Seeded demo notice: {}", title);
     }
 
     private void ensureExpenses() {

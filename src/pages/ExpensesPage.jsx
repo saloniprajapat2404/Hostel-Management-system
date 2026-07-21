@@ -47,7 +47,7 @@ function StatCard({ label, value, hint }) {
 
 export default function ExpensesPage() {
   const role = getSession()?.role
-  const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const canManage = role === 'SUPER_ADMIN'
 
   const [items, setItems] = useState([])
   const [totalExpenses, setTotalExpenses] = useState(0)
@@ -128,7 +128,7 @@ export default function ExpensesPage() {
       <div>
         <PageHeader
           title="Expenses"
-          subtitle="Expense tracking is available to administrators only."
+          subtitle="Expense tracking is available to Super Admin only."
         />
         <EmptyBlock message="You do not have permission to view this page." />
       </div>
@@ -166,7 +166,7 @@ export default function ExpensesPage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">New expense</h2>
           <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category">
+            <Field label="Category" required>
               <select
                 className={fieldClass}
                 value={form.category}
@@ -179,7 +179,7 @@ export default function ExpensesPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Date">
+            <Field label="Date" required>
               <input
                 className={fieldClass}
                 type="date"
@@ -188,7 +188,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setForm((p) => ({ ...p, expenseDate: e.target.value }))}
               />
             </Field>
-            <Field label="Amount (₹)">
+            <Field label="Amount (₹)" required>
               <input
                 className={fieldClass}
                 type="number"

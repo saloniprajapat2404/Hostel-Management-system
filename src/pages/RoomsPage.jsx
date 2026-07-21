@@ -164,13 +164,13 @@ export default function RoomsPage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">{editingId ? 'Edit room' : 'Add room'}</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Room number">
+            <Field label="Room number" required>
               <input className={fieldClass} required value={form.roomNumber} onChange={(e) => setForm({ ...form, roomNumber: e.target.value })} />
             </Field>
-            <Field label="Floor">
+            <Field label="Floor" required>
               <input type="number" min={1} max={5} className={fieldClass} required value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} />
             </Field>
-            <Field label="Capacity">
+            <Field label="Capacity" required>
               <input type="number" min={1} className={fieldClass} required value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
             </Field>
             {editingId && (

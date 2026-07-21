@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { mobileInputProps, normalizeMobile10, requiredMobileValidationError } from '../utils/phoneHelpers'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
@@ -69,10 +70,15 @@ export default function AdmissionsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const phoneErr = requiredMobileValidationError(form.phone, 'Phone')
+    if (phoneErr) {
+      setError(phoneErr)
+      return
+    }
     setSaving(true)
     setError('')
     try {
-      await apiPost('/api/admissions', form)
+      await apiPost('/api/admissions', { ...form, phone: normalizeMobile10(form.phone) || null })
       setForm(emptyForm)
       setShowForm(false)
       await load()
@@ -135,16 +141,22 @@ export default function AdmissionsPage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">New admission</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Student name">
+            <Field label="Student name" required>
               <input className={fieldClass} required value={form.studentName} onChange={(e) => setForm({ ...form, studentName: e.target.value })} />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required>
               <input type="email" className={fieldClass} required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
-            <Field label="Phone">
-              <input className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Field label="Phone" required>
+              <input
+                className={fieldClass}
+                required
+                {...mobileInputProps}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
+              />
             </Field>
-            <Field label="Student ID">
+            <Field label="Student ID" required>
               <input className={fieldClass} required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} />
             </Field>
             <Field label="Notes">

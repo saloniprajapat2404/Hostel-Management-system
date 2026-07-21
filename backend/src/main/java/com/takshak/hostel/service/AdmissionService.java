@@ -11,6 +11,7 @@ import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
+import com.takshak.hostel.util.PhoneUtils;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,7 +46,7 @@ public class AdmissionService {
         AdmissionRequest entity = new AdmissionRequest();
         entity.setStudentName(request.studentName().trim());
         entity.setEmail(request.email().trim().toLowerCase());
-        entity.setPhone(request.phone());
+        entity.setPhone(PhoneUtils.requireMobile10(request.phone(), "Phone"));
         entity.setStudentId(request.studentId().trim().toUpperCase());
         entity.setNotes(request.notes());
         entity.setStatus(AdmissionStatus.PENDING);

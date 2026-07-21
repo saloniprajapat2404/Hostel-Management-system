@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Camera, MapPin, UserRound } from 'lucide-react'
 import { apiGet, apiPut } from '../utils/api'
 import { getSession, saveSession, getToken } from '../utils/auth'
+import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
+import { validateOwnProfileFields } from '../utils/profileFieldHelpers'
 import StudentFeesPanel from '../components/fees/StudentFeesPanel'
 import {
   ActionButton,
@@ -77,7 +79,7 @@ export default function ProfilePage() {
   const persistProfile = async (nextForm) => {
     const updated = await apiPut('/api/users/me/profile', {
       fullName: nextForm.fullName,
-      phone: nextForm.phone,
+      phone: normalizeMobile10(nextForm.phone) || null,
       aadharNumber: nextForm.aadharNumber.replace(/\D/g, '') || null,
       profilePicture: nextForm.profilePicture || null,
       addressLine: nextForm.addressLine,
@@ -122,6 +124,11 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const validationErr = validateOwnProfileFields(form)
+    if (validationErr) {
+      setError(validationErr)
+      return
+    }
     setSaving(true)
     setError('')
     setSuccess('')
@@ -210,7 +217,7 @@ export default function ProfilePage() {
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Personal details</h2>
               </div>
               <div className="space-y-4">
-                <Field label="Full name">
+                <Field label="Full name" required>
                   <input
                     className={fieldClass}
                     required
@@ -218,73 +225,75 @@ export default function ProfilePage() {
                     onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label="Phone" required>
                   <input
                     className={fieldClass}
+                    required
+                    {...mobileInputProps}
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
                   />
                 </Field>
-                {isStudent && (
-                  <Field label="Aadhar card number">
-                    <input
-                      className={fieldClass}
-                      inputMode="numeric"
-                      placeholder="1234 5678 9012"
-                      value={formatAadhar(form.aadharNumber)}
-                      onChange={(e) =>
-                        setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
-                      }
-                    />
-                  </Field>
-                )}
+                <Field label="Aadhar card number" required>
+                  <input
+                    className={fieldClass}
+                    required
+                    inputMode="numeric"
+                    placeholder="1234 5678 9012"
+                    value={formatAadhar(form.aadharNumber)}
+                    onChange={(e) =>
+                      setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
+                    }
+                  />
+                </Field>
               </div>
             </Card>
 
-            {isStudent && (
-              <Card>
-                <div className="mb-4 flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Address</h2>
-                </div>
-                <div className="space-y-4">
-                  <Field label="Street / locality">
-                    <textarea
-                      className={`${fieldClass} min-h-20`}
-                      value={form.addressLine}
-                      onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
-                    />
-                  </Field>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="City">
-                      <input
-                        className={fieldClass}
-                        value={form.city}
-                        onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="State">
-                      <input
-                        className={fieldClass}
-                        value={form.state}
-                        onChange={(e) => setForm({ ...form, state: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Pincode">
+            <Card>
+              <div className="mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Address</h2>
+              </div>
+              <div className="space-y-4">
+                <Field label="Street / locality" required>
+                  <textarea
+                    className={`${fieldClass} min-h-20`}
+                    required
+                    value={form.addressLine}
+                    onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="City" required>
                     <input
                       className={fieldClass}
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={form.pincode}
-                      onChange={(e) =>
-                        setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
-                      }
+                      required
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="State" required>
+                    <input
+                      className={fieldClass}
+                      required
+                      value={form.state}
+                      onChange={(e) => setForm({ ...form, state: e.target.value })}
                     />
                   </Field>
                 </div>
-              </Card>
-            )}
+                <Field label="Pincode">
+                  <input
+                    className={fieldClass}
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={form.pincode}
+                    onChange={(e) =>
+                      setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
+                    }
+                  />
+                </Field>
+              </div>
+            </Card>
           </div>
 
           {isStudent && <StudentFeesPanel />}

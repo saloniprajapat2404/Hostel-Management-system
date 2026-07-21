@@ -131,10 +131,10 @@ export default function ComplaintsPage() {
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold">New complaint</h2>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Field label="Title">
+            <Field label="Title" required>
               <input className={fieldClass} required value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
-            <Field label="Description">
+            <Field label="Description" required>
               <textarea
                 className={`${fieldClass} min-h-28`}
                 required
