@@ -1,7 +1,17 @@
 import { useMemo, useState } from 'react'
+import {
+  CheckCircle2,
+  Crown,
+  GraduationCap,
+  MapPin,
+  Shield,
+  UserCog,
+  UserPlus,
+} from 'lucide-react'
 import { apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
-import { digitsOnly, isTenDigitPhone } from '../utils/phone'
+import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
+import { validateContactProfileFields } from '../utils/profileFieldHelpers'
 import OnOffToggle from '../components/ui/OnOffToggle'
 import {
   ActionButton,
@@ -16,24 +26,33 @@ const USER_TYPES = [
   {
     value: 'SUPER_ADMIN',
     label: 'Super Admin',
-    description: 'Full system access including user and expense management',
+    description: 'Full system access including expenses, all users, and settings',
+    icon: Crown,
+    tone: 'amber',
   },
   {
     value: 'ADMIN',
     label: 'Admin',
     description: 'Manage hostel operations, rooms, fees, and students',
+    icon: Shield,
+    tone: 'violet',
   },
   {
     value: 'WARDEN',
     label: 'Warden',
     description: 'Manage residents, attendance, complaints, and notices',
+    icon: UserCog,
+    tone: 'blue',
   },
   {
     value: 'STUDENT',
     label: 'Student',
-    description: 'Register a new hostel student account',
+    description: 'Register a new hostel student with contact and address details',
+    icon: GraduationCap,
+    tone: 'teal',
   },
 ]
+
 const CREATABLE_BY_ROLE = {
   SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'WARDEN', 'STUDENT'],
   ADMIN: ['WARDEN', 'STUDENT'],
@@ -57,17 +76,55 @@ const emptyForm = {
 
 const studentOnlyFields = {
   studentId: '',
-  whatsappNumber: '',
-  aadharNumber: '',
-  addressLine: '',
-  city: '',
-  state: '',
-  pincode: '',
-  parentPhone: '',
+}
+
+const buildProfileBody = (form) => ({
+  aadharNumber: form.aadharNumber.replace(/\D/g, '') || null,
+  addressLine: form.addressLine.trim() || null,
+  city: form.city.trim() || null,
+  state: form.state.trim() || null,
+  pincode: form.pincode.replace(/\D/g, '') || null,
+  parentPhone: normalizeMobile10(form.parentPhone) || null,
+  whatsappNumber: normalizeMobile10(form.whatsappNumber) || null,
+})
+
+const inputClass = `${fieldClass} add-user-input transition-all duration-200`
+
+function createUserHeading(userType) {
+  if (userType === 'SUPER_ADMIN') return 'Create Super Admin'
+  if (userType === 'ADMIN') return 'Create Admin'
+  if (userType === 'WARDEN') return 'Create Warden'
+  if (userType === 'STUDENT') return 'Create Student'
+  return 'Create User'
+}
+
+function createUserButtonLabel(userType, saving) {
+  if (saving) return 'Creating…'
+  return createUserHeading(userType)
+}
+
+function FormSection({ icon: Icon, title, subtitle, children }) {
+  return (
+    <section className="add-user-section">
+      <div className="add-user-section-head">
+        <span className="add-user-section-icon" aria-hidden="true">
+          <Icon className="h-4 w-4" strokeWidth={2} />
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+          {subtitle && (
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
+  )
 }
 
 export default function AddUserPage() {
   const session = getSession()
+  const isSuperAdmin = session?.role === 'SUPER_ADMIN'
   const canToggleActive = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const allowedTypes = useMemo(
     () => USER_TYPES.filter((type) => CREATABLE_BY_ROLE[session?.role]?.includes(type.value)),
@@ -91,41 +148,16 @@ export default function AddUserPage() {
     }
   }
 
-  const buildStudentBody = () => ({
-    aadharNumber: form.aadharNumber.replace(/\D/g, '') || null,
-    addressLine: form.addressLine.trim() || null,
-    city: form.city.trim() || null,
-    state: form.state.trim() || null,
-    pincode: form.pincode.replace(/\D/g, '') || null,
-    parentPhone: form.parentPhone || null,
-  })
-
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const validationErr = validateContactProfileFields(form)
+    if (validationErr) {
+      setError(validationErr)
+      return
+    }
     setSaving(true)
     setError('')
     setSuccess('')
-
-    const phone = digitsOnly(form.phone)
-    const whatsappNumber = digitsOnly(form.whatsappNumber)
-    const parentPhone = digitsOnly(form.parentPhone)
-
-    if (!isTenDigitPhone(phone)) {
-      setError('Phone number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-    if (userType === 'STUDENT' && !isTenDigitPhone(whatsappNumber)) {
-      setError('WhatsApp number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-    if (userType === 'STUDENT' && parentPhone && !isTenDigitPhone(parentPhone)) {
-      setError('Parent mobile number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-
     try {
       await apiPost('/api/users', {
         email: form.email.trim(),
@@ -133,13 +165,12 @@ export default function AddUserPage() {
         fullName: form.fullName.trim(),
         role: userType,
         studentId: userType === 'STUDENT' ? form.studentId.trim() || null : null,
-        phone,
-        whatsappNumber: userType === 'STUDENT' ? whatsappNumber : null,
+        phone: normalizeMobile10(form.phone) || null,
         active: canToggleActive ? Boolean(form.active) : true,
-        ...(userType === 'STUDENT' ? { ...buildStudentBody(), parentPhone: parentPhone || null } : {}),
+        ...buildProfileBody(form),
       })
       setSuccess(
-        `${selected.label} registered successfully${form.active ? '' : ' (inactive — cannot sign in)'}.`,
+        `${selected.label} created successfully${form.active ? '' : ' (inactive — cannot sign in)'}.`,
       )
       setForm(emptyForm)
     } catch (err) {
@@ -154,10 +185,8 @@ export default function AddUserPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Add User"
-      />
+    <div className="add-user-page mx-auto max-w-4xl motion-safe:animate-[fade-in-up_0.35s_ease-out]">
+      <PageHeader title="Add User" />
 
       {error && (
         <div className="mb-4">
@@ -166,56 +195,113 @@ export default function AddUserPage() {
       )}
 
       {success && (
-        <Card className="mb-4 border-emerald-200 dark:border-emerald-900/40">
-          <p className="text-sm text-emerald-700 dark:text-emerald-300">{success}</p>
+        <div className="add-user-success mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/40">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">{success}</p>
+            <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">
+              The new account is ready to sign in.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isSuperAdmin && (
+        <Card className="add-user-card mb-5 overflow-hidden p-0">
+          <div className="grid gap-3 p-5 sm:grid-cols-2">
+            {allowedTypes.map((type) => {
+              const Icon = type.icon
+              const active = userType === type.value
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => handleTypeChange(type.value)}
+                  aria-pressed={active}
+                  className={[
+                    'add-user-role-card group text-left',
+                    active ? 'add-user-role-card-active' : '',
+                    `add-user-role-${type.tone}`,
+                  ].join(' ')}
+                >
+                  <span className="add-user-role-icon" aria-hidden="true">
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </span>
+                  <span className="mt-3 block text-sm font-semibold text-slate-900 dark:text-white">
+                    {type.label}
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {type.description}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </Card>
       )}
 
-      <Card className="mb-6">
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
-          <div className="min-w-0">
-            <Field label="User type" required>
-              <select
-                className={fieldClass}
-                value={userType}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                aria-label="User type"
-                required
-              >
-                {allowedTypes.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{selected.description}</p>
+      <Card className="add-user-card overflow-hidden p-0">
+        <div className="border-b border-slate-200/80 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-800/40">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light">
+                <UserPlus className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {createUserHeading(userType)}
+                </h2>
+                {isSuperAdmin && selected?.description && (
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {selected.description}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex shrink-0 sm:justify-end">
+              <OnOffToggle
+                id="add-user-active-toggle"
+                label="Account status"
+                checked={form.active !== false}
+                canToggle={canToggleActive}
+                onChange={(next) => setForm({ ...form, active: next })}
+                className="sm:items-end"
+              />
+            </div>
           </div>
-          <div className="flex sm:justify-end">
-            <OnOffToggle
-              id="add-user-active-toggle"
-              label="Account status"
-              checked={form.active !== false}
-              canToggle={canToggleActive}
-              onChange={(next) => setForm({ ...form, active: next })}
-              className="sm:items-end"
-            />
-          </div>
+          {isSuperAdmin && (
+            <div className="mt-4 max-w-xs">
+              <Field label="User type" required>
+                <select
+                  className={inputClass}
+                  required
+                  value={userType}
+                  onChange={(e) => handleTypeChange(e.target.value)}
+                >
+                  {allowedTypes.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )}
         </div>
-      </Card>
-      <Card>
-        <div key={userType} className="motion-safe:animate-[fade-in-up_0.25s_ease-out]">
-          <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">
-            {selected.label} details
-          </h2>
-          <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
-            Fields marked with <span className="text-red-500">*</span> are mandatory.
-          </p>
 
-          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+        <form
+          key={userType}
+          onSubmit={handleSubmit}
+          className="space-y-8 p-5 motion-safe:animate-[fade-in-up_0.25s_ease-out]"
+        >
+          <FormSection
+            icon={selected.icon}
+            title="Account credentials"
+            subtitle="Login details for the new user"
+          >
             <Field label="Full name" required>
               <input
-                className={fieldClass}
+                className={inputClass}
                 required
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
@@ -225,7 +311,7 @@ export default function AddUserPage() {
             <Field label="Email" required>
               <input
                 type="email"
-                className={fieldClass}
+                className={inputClass}
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -235,7 +321,7 @@ export default function AddUserPage() {
             <Field label="Password" required>
               <input
                 type="password"
-                className={fieldClass}
+                className={inputClass}
                 required
                 minLength={6}
                 value={form.password}
@@ -243,119 +329,134 @@ export default function AddUserPage() {
                 placeholder="Minimum 6 characters"
               />
             </Field>
-            <Field label="Phone No" required>
+            <Field label="Phone" required>
               <input
-                className={fieldClass}
+                className={inputClass}
                 required
-                inputMode="numeric"
-                maxLength={10}
-                pattern="\d{10}"
-                title="Enter exactly 10 digits"
+                {...mobileInputProps}
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
-                placeholder="10-digit mobile number"
+                onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
               />
             </Field>
+          </FormSection>
+
+          <FormSection
+            icon={selected.icon}
+            title="Identity & contact"
+            subtitle="Verification and emergency contact details"
+          >
             {userType === 'STUDENT' && (
-              <>
-                <Field label="Student ID">
-                  <input
-                    className={fieldClass}
-                    value={form.studentId}
-                    onChange={(e) => setForm({ ...form, studentId: e.target.value })}
-                    placeholder="e.g. STU2024001"
-                  />
-                </Field>
-                <Field label="Aadhar no">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={14}
-                    value={form.aadharNumber.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}
-                    onChange={(e) =>
-                      setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
-                    }
-                    placeholder="XXXX XXXX XXXX"
-                  />
-                </Field>
-                <Field label="Parent mobile no">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={10}
-                    pattern="\d{10}"
-                    title="Enter exactly 10 digits"
-                    value={form.parentPhone}
-                    onChange={(e) => setForm({ ...form, parentPhone: digitsOnly(e.target.value) })}
-                    placeholder="10 digits (optional)"
-                  />
-                </Field>
-                <Field label="WhatsApp No" required>
-                  <input
-                    className={fieldClass}
-                    required
-                    inputMode="numeric"
-                    maxLength={10}
-                    pattern="\d{10}"
-                    title="Enter exactly 10 digits"
-                    value={form.whatsappNumber}
-                    onChange={(e) => setForm({ ...form, whatsappNumber: digitsOnly(e.target.value) })}
-                    placeholder="10-digit WhatsApp number"
-                  />
-                </Field>
-                <Field label="Address line" className="sm:col-span-2">
-                  <input
-                    className={fieldClass}
-                    value={form.addressLine}
-                    onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
-                    placeholder="Street / hostel block / room"
-                  />
-                </Field>
-                <Field label="City">
-                  <input
-                    className={fieldClass}
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  />
-                </Field>
-                <Field label="State">
-                  <input
-                    className={fieldClass}
-                    value={form.state}
-                    onChange={(e) => setForm({ ...form, state: e.target.value })}
-                  />
-                </Field>
-                <Field label="Pincode">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={form.pincode}
-                    onChange={(e) =>
-                      setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
-                    }
-                  />
-                </Field>
-              </>
+              <Field label="Student ID">
+                <input
+                  className={inputClass}
+                  value={form.studentId}
+                  onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+                  placeholder="e.g. STU2024001"
+                />
+              </Field>
             )}
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <ActionButton type="submit" disabled={saving}>
-                {saving ? 'Registering…' : `Register ${selected.label}`}
-              </ActionButton>
-              <ActionButton
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setForm(emptyForm)
-                  setError('')
-                  setSuccess('')
-                }}
-              >
-                Clear form
-              </ActionButton>
+            <Field label="Aadhar no" required>
+              <input
+                className={inputClass}
+                required
+                inputMode="numeric"
+                maxLength={14}
+                value={form.aadharNumber.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}
+                onChange={(e) =>
+                  setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
+                }
+                placeholder="XXXX XXXX XXXX"
+              />
+            </Field>
+            <Field label="Parent mobile no" required>
+              <input
+                className={inputClass}
+                required
+                {...mobileInputProps}
+                value={form.parentPhone}
+                onChange={(e) =>
+                  setForm({ ...form, parentPhone: normalizeMobile10(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="WhatsApp number">
+              <input
+                className={inputClass}
+                {...mobileInputProps}
+                value={form.whatsappNumber}
+                onChange={(e) =>
+                  setForm({ ...form, whatsappNumber: normalizeMobile10(e.target.value) })
+                }
+                placeholder="10-digit number for notice alerts"
+              />
+            </Field>
+          </FormSection>
+
+          <FormSection
+            icon={MapPin}
+            title="Address"
+            subtitle="Contact address for records"
+          >
+            <div className="sm:col-span-2">
+              <Field label="Address line" required>
+                <input
+                  className={inputClass}
+                  required
+                  value={form.addressLine}
+                  onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+                  placeholder="Street / locality / hostel block"
+                />
+              </Field>
             </div>
-          </form>
-        </div>
+            <Field label="City" required>
+              <input
+                className={inputClass}
+                required
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                placeholder="City"
+              />
+            </Field>
+            <Field label="State" required>
+              <input
+                className={inputClass}
+                required
+                value={form.state}
+                onChange={(e) => setForm({ ...form, state: e.target.value })}
+                placeholder="State"
+              />
+            </Field>
+            <Field label="Pincode">
+              <input
+                className={inputClass}
+                inputMode="numeric"
+                maxLength={6}
+                value={form.pincode}
+                onChange={(e) =>
+                  setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
+                }
+                placeholder="6-digit pincode"
+              />
+            </Field>
+          </FormSection>
+
+          <div className="add-user-actions flex flex-wrap items-center gap-3 border-t border-slate-200/80 pt-5 dark:border-slate-800">
+            <ActionButton type="submit" disabled={saving} className="min-w-[160px] shadow-md shadow-primary/20">
+              {createUserButtonLabel(userType, saving)}
+            </ActionButton>
+            <ActionButton
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setForm(emptyForm)
+                setError('')
+                setSuccess('')
+              }}
+            >
+              Clear form
+            </ActionButton>
+          </div>
+        </form>
       </Card>
     </div>
   )

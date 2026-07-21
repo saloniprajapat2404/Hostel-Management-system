@@ -11,6 +11,7 @@ import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.SecurityUtils;
+import com.takshak.hostel.util.PhoneUtils;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -67,8 +68,8 @@ public class UserService {
         Role targetRole = request.role();
 
         if (current.getRole() == Role.SUPER_ADMIN) {
-            if (targetRole != Role.SUPER_ADMIN && targetRole != Role.ADMIN
-                    && targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
+            if (targetRole != Role.SUPER_ADMIN && targetRole != Role.ADMIN && targetRole != Role.WARDEN
+                    && targetRole != Role.STUDENT) {
                 throw new ApiException("Super Admin can only create SUPER_ADMIN, ADMIN, WARDEN or STUDENT users", 400);
             }
         } else if (current.getRole() == Role.ADMIN) {
@@ -93,10 +94,10 @@ public class UserService {
         user.setFullName(request.fullName().trim());
         user.setRole(targetRole);
         user.setStudentId(blankToNull(request.studentId()));
-        user.setPhone(request.phone());
-        user.setWhatsappNumber(blankToNull(request.whatsappNumber()));
-        user.setParentPhone(blankToNull(request.parentPhone()));
-        applyStudentProfileFields(user, request.aadharNumber(), request.addressLine(),
+        user.setPhone(PhoneUtils.requireMobile10(request.phone(), "Phone"));
+        user.setWhatsappNumber(PhoneUtils.requireOptionalMobile10(request.whatsappNumber(), "WhatsApp number"));
+        user.setParentPhone(PhoneUtils.requireMobile10(request.parentPhone(), "Parent mobile number"));
+        applyRequiredProfileFields(user, request.aadharNumber(), request.addressLine(),
                 request.city(), request.state(), request.pincode());
         boolean active = request.active() == null || Boolean.TRUE.equals(request.active());
         if (!active && current.getRole() != Role.SUPER_ADMIN && current.getRole() != Role.ADMIN) {
@@ -139,36 +140,23 @@ public class UserService {
             user.setStudentId(sid);
         }
         if (request.phone() != null) {
-            user.setPhone(request.phone());
+            user.setPhone(PhoneUtils.requireMobile10(request.phone(), "Phone"));
         }
         if (request.whatsappNumber() != null) {
-            user.setWhatsappNumber(blankToNull(request.whatsappNumber()));
+            user.setWhatsappNumber(PhoneUtils.requireOptionalMobile10(request.whatsappNumber(), "WhatsApp number"));
         }
         if (request.parentPhone() != null) {
-            user.setParentPhone(blankToNull(request.parentPhone()));
+            user.setParentPhone(PhoneUtils.requireMobile10(request.parentPhone(), "Parent mobile number"));
         }
-        if (request.aadharNumber() != null) {
-            String aadhar = digitsOnly(request.aadharNumber());
-            if (aadhar != null && aadhar.length() != 12) {
-                throw new ApiException("Aadhar number must be 12 digits", 400);
-            }
-            user.setAadharNumber(aadhar);
-        }
-        if (request.addressLine() != null) {
-            user.setAddressLine(blankToNull(request.addressLine()));
-        }
-        if (request.city() != null) {
-            user.setCity(blankToNull(request.city()));
-        }
-        if (request.state() != null) {
-            user.setState(blankToNull(request.state()));
-        }
-        if (request.pincode() != null) {
-            String pincode = digitsOnly(request.pincode());
-            if (pincode != null && pincode.length() != 6) {
-                throw new ApiException("Pincode must be 6 digits", 400);
-            }
-            user.setPincode(pincode);
+        if (request.aadharNumber() != null || request.addressLine() != null || request.city() != null
+                || request.state() != null || request.pincode() != null) {
+            applyRequiredProfileFields(
+                    user,
+                    request.aadharNumber() != null ? request.aadharNumber() : user.getAadharNumber(),
+                    request.addressLine() != null ? request.addressLine() : user.getAddressLine(),
+                    request.city() != null ? request.city() : user.getCity(),
+                    request.state() != null ? request.state() : user.getState(),
+                    request.pincode() != null ? request.pincode() : user.getPincode());
         }
         if (request.active() != null) {
             if (current.getRole() != Role.SUPER_ADMIN && current.getRole() != Role.ADMIN) {
@@ -205,25 +193,15 @@ public class UserService {
     public UserDto updateOwnProfile(UpdateProfileRequest request) {
         User user = SecurityUtils.currentUser();
         user.setFullName(request.fullName().trim());
-        user.setPhone(blankToNull(request.phone()));
-
-        String aadhar = digitsOnly(request.aadharNumber());
-        if (aadhar != null && aadhar.length() != 12) {
-            throw new ApiException("Aadhar number must be 12 digits", 400);
-        }
-        user.setAadharNumber(aadhar);
-
+        user.setPhone(PhoneUtils.requireMobile10(request.phone(), "Phone"));
         user.setProfilePicture(blankToNull(request.profilePicture()));
-        user.setAddressLine(blankToNull(request.addressLine()));
-        user.setCity(blankToNull(request.city()));
-        user.setState(blankToNull(request.state()));
-
-        String pincode = digitsOnly(request.pincode());
-        if (pincode != null && pincode.length() != 6) {
-            throw new ApiException("Pincode must be 6 digits", 400);
-        }
-        user.setPincode(pincode);
-
+        applyRequiredProfileFields(
+                user,
+                request.aadharNumber(),
+                request.addressLine(),
+                request.city(),
+                request.state(),
+                request.pincode());
         return UserDto.from(userRepository.save(user));
     }
 
@@ -266,7 +244,7 @@ public class UserService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private void applyStudentProfileFields(
+    private void applyRequiredProfileFields(
             User user,
             String aadharNumber,
             String addressLine,
@@ -274,13 +252,29 @@ public class UserService {
             String state,
             String pincode) {
         String aadhar = digitsOnly(aadharNumber);
-        if (aadhar != null && aadhar.length() != 12) {
-            throw new ApiException("Aadhar number must be 12 digits", 400);
+        if (aadhar == null || aadhar.length() != 12) {
+            throw new ApiException("Aadhar number is required and must be 12 digits", 400);
         }
         user.setAadharNumber(aadhar);
-        user.setAddressLine(blankToNull(addressLine));
-        user.setCity(blankToNull(city));
-        user.setState(blankToNull(state));
+
+        String line = blankToNull(addressLine);
+        if (line == null) {
+            throw new ApiException("Address line is required", 400);
+        }
+        user.setAddressLine(line);
+
+        String cityValue = blankToNull(city);
+        if (cityValue == null) {
+            throw new ApiException("City is required", 400);
+        }
+        user.setCity(cityValue);
+
+        String stateValue = blankToNull(state);
+        if (stateValue == null) {
+            throw new ApiException("State is required", 400);
+        }
+        user.setState(stateValue);
+
         String pin = digitsOnly(pincode);
         if (pin != null && pin.length() != 6) {
             throw new ApiException("Pincode must be 6 digits", 400);

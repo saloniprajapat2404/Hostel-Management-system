@@ -69,6 +69,7 @@ export default function LoginForm({ lang, hostelName, onError, onSuccessToast })
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Input
           label={t(lang, 'identifier')}
+          required
           autoComplete="username"
           error={errors.identifier?.message}
           {...register('identifier', {
@@ -80,6 +81,7 @@ export default function LoginForm({ lang, hostelName, onError, onSuccessToast })
 
         <Input
           label={t(lang, 'password')}
+          required
           showToggle
           autoComplete="current-password"
           toggleLabels={{

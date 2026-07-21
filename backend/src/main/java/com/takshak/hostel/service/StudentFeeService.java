@@ -103,10 +103,18 @@ public class StudentFeeService {
         assertAdminAccess();
         User student = requireStudent(studentId);
 
+        String feeType = request.feeType().trim();
+        String academicYear = request.academicYear().trim();
+        if (studentFeeRepository.existsByStudentIdAndFeeTypeAndAcademicYear(
+                student.getId(), feeType, academicYear)) {
+            throw new ApiException(
+                    "This student already has " + feeType + " for " + academicYear + ".", 409);
+        }
+
         StudentFee fee = new StudentFee();
         fee.setStudentId(student.getId());
-        fee.setFeeType(request.feeType().trim());
-        fee.setAcademicYear(request.academicYear().trim());
+        fee.setFeeType(feeType);
+        fee.setAcademicYear(academicYear);
         fee.setTotalAmount(request.totalAmount());
         fee.setPaidAmount(BigDecimal.ZERO);
         fee.setDueDate(request.dueDate());

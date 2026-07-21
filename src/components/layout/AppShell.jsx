@@ -56,7 +56,10 @@ const SUPER_ADMIN_NAV = [
   },
   {
     label: 'Finance',
-    children: [{ to: '/app/fees', label: 'Fees' }],
+    children: [
+      { to: '/app/fees', label: 'Fees' },
+      { to: '/app/expenses', label: 'Expenses' },
+    ],
   },
   {
     label: 'Communication',

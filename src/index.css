@@ -359,6 +359,98 @@
   appearance: textfield;
 }
 
+.add-user-page .add-user-card {
+  @apply shadow-sm transition-shadow duration-300 hover:shadow-md dark:shadow-none;
+}
+
+.add-user-role-card {
+  @apply relative rounded-2xl border p-4 transition-all duration-200 ease-out motion-reduce:transform-none;
+  border-color: rgb(226 232 240 / 0.9);
+  background: rgb(248 250 252 / 0.8);
+}
+
+.dark .add-user-role-card {
+  border-color: rgb(51 65 85 / 0.8);
+  background: rgb(15 23 42 / 0.5);
+}
+
+.add-user-role-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(15 118 110 / 0.35);
+  box-shadow: 0 8px 24px rgb(15 118 110 / 0.12);
+}
+
+.add-user-role-card-active {
+  border-color: rgb(15 118 110 / 0.55);
+  background: linear-gradient(135deg, rgb(15 118 110 / 0.12) 0%, rgb(20 184 166 / 0.06) 100%);
+  box-shadow: 0 8px 28px rgb(15 118 110 / 0.16);
+}
+
+.dark .add-user-role-card-active {
+  background: linear-gradient(135deg, rgb(15 118 110 / 0.22) 0%, rgb(20 184 166 / 0.08) 100%);
+}
+
+.add-user-role-icon {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-200;
+  background: rgb(15 118 110 / 0.12);
+  color: rgb(15 118 110);
+}
+
+.dark .add-user-role-icon {
+  background: rgb(20 184 166 / 0.15);
+  color: rgb(45 212 191);
+}
+
+.add-user-role-card:hover .add-user-role-icon,
+.add-user-role-card-active .add-user-role-icon {
+  transform: scale(1.05);
+}
+
+.add-user-role-blue.add-user-role-card-active {
+  border-color: rgb(59 130 246 / 0.5);
+  background: linear-gradient(135deg, rgb(59 130 246 / 0.1) 0%, transparent 100%);
+}
+
+.add-user-role-blue .add-user-role-icon {
+  background: rgb(59 130 246 / 0.12);
+  color: rgb(37 99 235);
+}
+
+.add-user-role-violet.add-user-role-card-active {
+  border-color: rgb(139 92 246 / 0.5);
+  background: linear-gradient(135deg, rgb(139 92 246 / 0.1) 0%, transparent 100%);
+}
+
+.add-user-role-violet .add-user-role-icon {
+  background: rgb(139 92 246 / 0.12);
+  color: rgb(124 58 237);
+}
+
+.add-user-section {
+  @apply rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30;
+}
+
+.add-user-section-head {
+  @apply mb-4 flex items-start gap-3;
+}
+
+.add-user-section-icon {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light;
+}
+
+.add-user-input:hover {
+  border-color: rgb(15 118 110 / 0.35);
+}
+
+.add-user-input:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgb(15 118 110 / 0.12);
+}
+
+.add-user-success {
+  animation: fade-in-up 0.35s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-fade-in-up,

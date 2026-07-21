@@ -6,4 +6,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface StudentFeeRepository extends MongoRepository<StudentFee, String> {
     List<StudentFee> findByStudentIdOrderByDueDateDesc(String studentId);
+
+    boolean existsByStudentIdAndFeeTypeAndAcademicYear(String studentId, String feeType, String academicYear);
 }

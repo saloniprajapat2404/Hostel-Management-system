@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Camera, MapPin, UserRound } from 'lucide-react'
 import { apiGet, apiPut } from '../utils/api'
 import { getSession, saveSession, getToken } from '../utils/auth'
-import { digitsOnly, isTenDigitPhone } from '../utils/phone'
+import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
+import { validateOwnProfileFields } from '../utils/profileFieldHelpers'
 import StudentFeesPanel from '../components/fees/StudentFeesPanel'
 import {
   ActionButton,
@@ -45,7 +46,7 @@ export default function ProfilePage() {
   const applyUser = useCallback((user) => {
     setForm({
       fullName: user?.fullName || '',
-      phone: digitsOnly(user?.phone),
+      phone: user?.phone || '',
       aadharNumber: user?.aadharNumber || '',
       profilePicture: user?.profilePicture || '',
       addressLine: user?.addressLine || '',
@@ -76,13 +77,9 @@ export default function ProfilePage() {
   }, [load])
 
   const persistProfile = async (nextForm) => {
-    const phone = digitsOnly(nextForm.phone)
-    if (phone && !isTenDigitPhone(phone)) {
-      throw new Error('Phone number must be exactly 10 digits.')
-    }
     const updated = await apiPut('/api/users/me/profile', {
       fullName: nextForm.fullName,
-      phone: phone || null,
+      phone: normalizeMobile10(nextForm.phone) || null,
       aadharNumber: nextForm.aadharNumber.replace(/\D/g, '') || null,
       profilePicture: nextForm.profilePicture || null,
       addressLine: nextForm.addressLine,
@@ -127,6 +124,11 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const validationErr = validateOwnProfileFields(form)
+    if (validationErr) {
+      setError(validationErr)
+      return
+    }
     setSaving(true)
     setError('')
     setSuccess('')
@@ -231,79 +233,75 @@ export default function ProfilePage() {
                     onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   />
                 </Field>
-                <Field label="Phone No" required>
+                <Field label="Phone" required>
+                  <input
+                    className={fieldClass}
+                    required
+                    {...mobileInputProps}
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Aadhar card number" required>
                   <input
                     className={fieldClass}
                     required
                     inputMode="numeric"
-                    maxLength={10}
-                    pattern="\d{10}"
-                    title="Enter exactly 10 digits"
-                    placeholder="10-digit mobile number"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+                    placeholder="1234 5678 9012"
+                    value={formatAadhar(form.aadharNumber)}
+                    onChange={(e) =>
+                      setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
+                    }
                   />
                 </Field>
-                {isStudent && (
-                  <Field label="Aadhar card number">
-                    <input
-                      className={fieldClass}
-                      inputMode="numeric"
-                      placeholder="1234 5678 9012"
-                      value={formatAadhar(form.aadharNumber)}
-                      onChange={(e) =>
-                        setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })
-                      }
-                    />
-                  </Field>
-                )}
               </div>
             </Card>
 
-            {isStudent && (
-              <Card>
-                <div className="mb-4 flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Address</h2>
-                </div>
-                <div className="space-y-4">
-                  <Field label="Street / locality">
-                    <textarea
-                      className={`${fieldClass} min-h-20`}
-                      value={form.addressLine}
-                      onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
-                    />
-                  </Field>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="City">
-                      <input
-                        className={fieldClass}
-                        value={form.city}
-                        onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="State">
-                      <input
-                        className={fieldClass}
-                        value={form.state}
-                        onChange={(e) => setForm({ ...form, state: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Pincode">
+            <Card>
+              <div className="mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Address</h2>
+              </div>
+              <div className="space-y-4">
+                <Field label="Street / locality" required>
+                  <textarea
+                    className={`${fieldClass} min-h-20`}
+                    required
+                    value={form.addressLine}
+                    onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="City" required>
                     <input
                       className={fieldClass}
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={form.pincode}
-                      onChange={(e) =>
-                        setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
-                      }
+                      required
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="State" required>
+                    <input
+                      className={fieldClass}
+                      required
+                      value={form.state}
+                      onChange={(e) => setForm({ ...form, state: e.target.value })}
                     />
                   </Field>
                 </div>
-              </Card>
-            )}
+                <Field label="Pincode">
+                  <input
+                    className={fieldClass}
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={form.pincode}
+                    onChange={(e) =>
+                      setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
+                    }
+                  />
+                </Field>
+              </div>
+            </Card>
           </div>
 
           {isStudent && <StudentFeesPanel />}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
-import { digitsOnly, isTenDigitPhone } from '../utils/phone'
+import { mobileInputProps, normalizeMobile10, requiredMobileValidationError } from '../utils/phoneHelpers'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
@@ -70,16 +70,15 @@ export default function AdmissionsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setSaving(true)
-    setError('')
-    const phone = digitsOnly(form.phone)
-    if (!isTenDigitPhone(phone)) {
-      setError('Phone number must be exactly 10 digits.')
-      setSaving(false)
+    const phoneErr = requiredMobileValidationError(form.phone, 'Phone')
+    if (phoneErr) {
+      setError(phoneErr)
       return
     }
+    setSaving(true)
+    setError('')
     try {
-      await apiPost('/api/admissions', { ...form, phone })
+      await apiPost('/api/admissions', { ...form, phone: normalizeMobile10(form.phone) || null })
       setForm(emptyForm)
       setShowForm(false)
       await load()
@@ -140,10 +139,7 @@ export default function AdmissionsPage() {
 
       {showForm && canManage && (
         <Card className="mb-6">
-          <h2 className="mb-1 text-lg font-semibold">New admission</h2>
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Fields marked with <span className="text-red-500">*</span> are mandatory.
-          </p>
+          <h2 className="mb-4 text-lg font-semibold">New admission</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
             <Field label="Student name" required>
               <input className={fieldClass} required value={form.studentName} onChange={(e) => setForm({ ...form, studentName: e.target.value })} />
@@ -151,17 +147,13 @@ export default function AdmissionsPage() {
             <Field label="Email" required>
               <input type="email" className={fieldClass} required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
-            <Field label="Phone No" required>
+            <Field label="Phone" required>
               <input
                 className={fieldClass}
                 required
-                inputMode="numeric"
-                maxLength={10}
-                pattern="\d{10}"
-                title="Enter exactly 10 digits"
-                placeholder="10-digit mobile number"
+                {...mobileInputProps}
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+                onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
               />
             </Field>
             <Field label="Student ID" required>

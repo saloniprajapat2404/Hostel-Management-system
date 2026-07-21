@@ -212,14 +212,10 @@ export function ActionButton({ children, variant = 'primary', className = '', ty
 
 export function Field({ label, children, required = false, className = '' }) {
   return (
-    <label className={`block space-y-1.5 ${className}`.trim()}>
+    <label className={['block space-y-1.5', className].filter(Boolean).join(' ')}>
       <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
         {label}
-        {required ? (
-          <span className="ml-0.5 font-semibold text-red-600 dark:text-red-400" aria-hidden="true">
-            *
-          </span>
-        ) : null}
+        {required ? <span className="text-red-500 dark:text-red-400"> *</span> : null}
       </span>
       {children}
     </label>

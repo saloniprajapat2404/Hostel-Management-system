@@ -2,6 +2,7 @@ import ComplaintsBarChart from './ComplaintsBarChart'
 import FeesStackedBar from './FeesStackedBar'
 import OccupancyDonut from './OccupancyDonut'
 import StudentFeeDonut from './StudentFeeDonut'
+import UserCountsBarChart from './UserCountsBarChart'
 
 export default function DashboardCharts({
   role,
@@ -12,6 +13,7 @@ export default function DashboardCharts({
   feesLoading = false,
 }) {
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const isSuperAdmin = role === 'SUPER_ADMIN'
   const isWarden = role === 'WARDEN'
   const isStudent = role === 'STUDENT'
 
@@ -54,7 +56,15 @@ export default function DashboardCharts({
     return (
       <section>
         <h3 className="dashboard-section-label">Analytics</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${isSuperAdmin ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+          {isSuperAdmin && (
+            <UserCountsBarChart
+              students={stats?.students ?? 0}
+              wardens={stats?.wardens ?? 0}
+              admins={stats?.admins ?? 0}
+              loading={chartsLoading}
+            />
+          )}
           <OccupancyDonut
             occupied={stats?.occupiedBeds}
             vacant={stats?.vacantBeds}

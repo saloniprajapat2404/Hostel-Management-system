@@ -119,7 +119,7 @@ export default function ExpensesDashboardPanel({ open, onClose }) {
 
       <form onSubmit={handleCreate} className="mb-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
-          Category
+          Category <span className="text-red-500">*</span>
           <select
             className={`${fieldClass} mt-1`}
             value={form.category}
@@ -133,7 +133,7 @@ export default function ExpensesDashboardPanel({ open, onClose }) {
           </select>
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
-          Date
+          Date <span className="text-red-500">*</span>
           <input
             type="date"
             className={`${fieldClass} mt-1`}
@@ -143,7 +143,7 @@ export default function ExpensesDashboardPanel({ open, onClose }) {
           />
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
-          Amount (₹)
+          Amount (₹) <span className="text-red-500">*</span>
           <input
             type="number"
             min="1"

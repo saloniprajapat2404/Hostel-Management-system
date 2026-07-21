@@ -296,7 +296,7 @@ export default function NoticesPage() {
             {editingId ? 'Edit notice' : 'Create notice / alert'}
           </h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title">
+            <Field label="Title" required>
               <input
                 className={fieldClass}
                 required
@@ -304,7 +304,7 @@ export default function NoticesPage() {
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
               />
             </Field>
-            <Field label="Category">
+            <Field label="Category" required>
               <select
                 className={fieldClass}
                 value={form.category}
@@ -315,7 +315,7 @@ export default function NoticesPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Target audience" className="sm:col-span-2">
+            <Field label="Target audience" required className="sm:col-span-2">
               <select
                 className={fieldClass}
                 value={form.targetAudience}
@@ -327,7 +327,7 @@ export default function NoticesPage() {
               </select>
             </Field>
             {form.targetAudience === 'SPECIFIC_ROOM' && (
-              <Field label="Room number">
+              <Field label="Room number" required>
                 <input
                   className={fieldClass}
                   required
@@ -338,7 +338,7 @@ export default function NoticesPage() {
               </Field>
             )}
             {form.targetAudience === 'SPECIFIC_STUDENT' && (
-              <Field label="Student ID">
+              <Field label="Student ID" required>
                 <input
                   className={fieldClass}
                   required
@@ -348,7 +348,7 @@ export default function NoticesPage() {
                 />
               </Field>
             )}
-            <Field label="Description" className="sm:col-span-2">
+            <Field label="Description" required className="sm:col-span-2">
               <textarea
                 className={`${fieldClass} min-h-28`}
                 required

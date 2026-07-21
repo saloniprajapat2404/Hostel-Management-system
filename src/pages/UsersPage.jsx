@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
-import { digitsOnly, isTenDigitPhone } from '../utils/phone'
+import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
+import { validateContactProfileFields } from '../utils/profileFieldHelpers'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
@@ -42,6 +43,16 @@ const emptyForm = {
   active: true,
 }
 
+const profileFields = (form) => ({
+  parentPhone: normalizeMobile10(form.parentPhone) || null,
+  whatsappNumber: normalizeMobile10(form.whatsappNumber) || null,
+  aadharNumber: form.aadharNumber.replace(/\D/g, '') || null,
+  addressLine: form.addressLine || null,
+  city: form.city || null,
+  state: form.state || null,
+  pincode: form.pincode.replace(/\D/g, '') || null,
+})
+
 export default function UsersPage() {
   const [params] = useSearchParams()
   const session = getSession()
@@ -50,7 +61,6 @@ export default function UsersPage() {
   const canCreate =
     session?.role === 'SUPER_ADMIN' ||
     (session?.role === 'ADMIN' && role !== 'ADMIN' && role !== 'SUPER_ADMIN')
-  const canToggleActive = canManage
   const readOnly = session?.role === 'WARDEN'
 
   const [users, setUsers] = useState([])
@@ -147,9 +157,9 @@ export default function UsersPage() {
       password: '',
       fullName: user.fullName || '',
       studentId: user.studentId || '',
-      phone: digitsOnly(user.phone),
-      whatsappNumber: digitsOnly(user.whatsappNumber),
-      parentPhone: digitsOnly(user.parentPhone),
+      phone: user.phone || '',
+      whatsappNumber: user.whatsappNumber || '',
+      parentPhone: user.parentPhone || '',
       aadharNumber: user.aadharNumber || '',
       addressLine: user.addressLine || '',
       city: user.city || '',
@@ -167,48 +177,24 @@ export default function UsersPage() {
       setError('You do not have permission to create this user type.')
       return
     }
+    const validationErr = validateContactProfileFields(form)
+    if (validationErr) {
+      setError(validationErr)
+      return
+    }
     setSaving(true)
     setError('')
-
-    const phone = digitsOnly(form.phone)
-    const whatsappNumber = digitsOnly(form.whatsappNumber)
-    const parentPhone = digitsOnly(form.parentPhone)
-
-    if (!isTenDigitPhone(phone)) {
-      setError('Phone number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-    if (role === 'STUDENT' && !isTenDigitPhone(whatsappNumber)) {
-      setError('WhatsApp number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-    if (role === 'STUDENT' && parentPhone && !isTenDigitPhone(parentPhone)) {
-      setError('Parent mobile number must be exactly 10 digits.')
-      setSaving(false)
-      return
-    }
-
     try {
       if (editingId) {
         const body = {
           email: form.email,
           fullName: form.fullName,
-          studentId: form.studentId || null,
-          phone,
+          studentId: role === 'STUDENT' ? form.studentId || null : null,
+          phone: normalizeMobile10(form.phone) || null,
           active: form.active,
+          ...profileFields(form),
         }
         if (form.password) body.password = form.password
-        if (role === 'STUDENT') {
-          body.parentPhone = parentPhone || null
-          body.whatsappNumber = whatsappNumber
-          body.aadharNumber = form.aadharNumber.replace(/\D/g, '') || null
-          body.addressLine = form.addressLine || null
-          body.city = form.city || null
-          body.state = form.state || null
-          body.pincode = form.pincode.replace(/\D/g, '') || null
-        }
         await apiPut(`/api/users/${editingId}`, body)
       } else {
         const body = {
@@ -216,18 +202,9 @@ export default function UsersPage() {
           password: form.password,
           fullName: form.fullName,
           role,
-          studentId: form.studentId || null,
-          phone,
-          active: canToggleActive ? Boolean(form.active) : true,
-        }
-        if (role === 'STUDENT') {
-          body.parentPhone = parentPhone || null
-          body.whatsappNumber = whatsappNumber
-          body.aadharNumber = form.aadharNumber.replace(/\D/g, '') || null
-          body.addressLine = form.addressLine || null
-          body.city = form.city || null
-          body.state = form.state || null
-          body.pincode = form.pincode.replace(/\D/g, '') || null
+          studentId: role === 'STUDENT' ? form.studentId || null : null,
+          phone: normalizeMobile10(form.phone) || null,
+          ...profileFields(form),
         }
         await apiPost('/api/users', body)
       }
@@ -273,10 +250,7 @@ export default function UsersPage() {
 
       {showForm && canManage && (
         <Card className="mb-6">
-          <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">{formTitle}</h2>
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Fields marked with <span className="text-red-500">*</span> are mandatory.
-          </p>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">{formTitle}</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name" required>
               <input className={fieldClass} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
@@ -287,17 +261,13 @@ export default function UsersPage() {
             <Field label={editingId ? 'Password (optional)' : 'Password'} required={!editingId}>
               <input type="password" className={fieldClass} required={!editingId} minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </Field>
-            <Field label="Phone No" required>
+            <Field label="Phone" required>
               <input
                 className={fieldClass}
                 required
-                inputMode="numeric"
-                maxLength={10}
-                pattern="\d{10}"
-                title="Enter exactly 10 digits"
-                placeholder="10-digit mobile number"
+                {...mobileInputProps}
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+                onChange={(e) => setForm({ ...form, phone: normalizeMobile10(e.target.value) })}
               />
             </Field>
             {role === 'STUDENT' && (
@@ -305,74 +275,65 @@ export default function UsersPage() {
                 <input className={fieldClass} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} />
               </Field>
             )}
-            {role === 'STUDENT' && (
-              <>
-                <Field label="Aadhar number">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={14}
-                    placeholder="XXXX XXXX XXXX"
-                    value={form.aadharNumber.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}
-                    onChange={(e) => setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })}
-                  />
-                </Field>
-                <Field label="Parent mobile no">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={10}
-                    pattern="\d{10}"
-                    title="Enter exactly 10 digits"
-                    placeholder="10 digits (optional)"
-                    value={form.parentPhone}
-                    onChange={(e) => setForm({ ...form, parentPhone: digitsOnly(e.target.value) })}
-                  />
-                </Field>
-                <Field label="WhatsApp No" required>
-                  <input
-                    className={fieldClass}
-                    required
-                    inputMode="numeric"
-                    maxLength={10}
-                    pattern="\d{10}"
-                    title="Enter exactly 10 digits"
-                    placeholder="10-digit WhatsApp number"
-                    value={form.whatsappNumber}
-                    onChange={(e) => setForm({ ...form, whatsappNumber: digitsOnly(e.target.value) })}
-                  />
-                </Field>
-                <Field label="Address line">
-                  <input className={fieldClass} value={form.addressLine} onChange={(e) => setForm({ ...form, addressLine: e.target.value })} />
-                </Field>
-                <Field label="City">
-                  <input className={fieldClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                </Field>
-                <Field label="State">
-                  <input className={fieldClass} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-                </Field>
-                <Field label="Pincode">
-                  <input
-                    className={fieldClass}
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={form.pincode}
-                    onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  />
-                </Field>
-              </>
-            )}
-            <Field label="Account status" required>
-              <select
+            <Field label="Aadhar number" required>
+              <input
                 className={fieldClass}
-                value={form.active !== false ? 'true' : 'false'}
-                disabled={!canToggleActive}
-                onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}
-              >
-                <option value="true">Active — can sign in</option>
-                <option value="false">Inactive — cannot sign in</option>
-              </select>
+                required
+                inputMode="numeric"
+                maxLength={14}
+                placeholder="XXXX XXXX XXXX"
+                value={form.aadharNumber.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}
+                onChange={(e) => setForm({ ...form, aadharNumber: e.target.value.replace(/\D/g, '').slice(0, 12) })}
+              />
             </Field>
+            <Field label="Parent mobile no" required>
+              <input
+                className={fieldClass}
+                required
+                {...mobileInputProps}
+                value={form.parentPhone}
+                onChange={(e) =>
+                  setForm({ ...form, parentPhone: normalizeMobile10(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="WhatsApp number">
+              <input
+                className={fieldClass}
+                {...mobileInputProps}
+                value={form.whatsappNumber}
+                onChange={(e) =>
+                  setForm({ ...form, whatsappNumber: normalizeMobile10(e.target.value) })
+                }
+                placeholder="10-digit number for notice alerts"
+              />
+            </Field>
+            <Field label="Address line" required>
+              <input className={fieldClass} required value={form.addressLine} onChange={(e) => setForm({ ...form, addressLine: e.target.value })} />
+            </Field>
+            <Field label="City" required>
+              <input className={fieldClass} required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            </Field>
+            <Field label="State" required>
+              <input className={fieldClass} required value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+            </Field>
+            <Field label="Pincode">
+              <input
+                className={fieldClass}
+                inputMode="numeric"
+                maxLength={6}
+                value={form.pincode}
+                onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+              />
+            </Field>
+            {editingId && (
+              <Field label="Active">
+                <select className={fieldClass} value={form.active ? 'true' : 'false'} onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </Field>
+            )}
             <div className="flex gap-2 sm:col-span-2">
               <ActionButton type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</ActionButton>
               <ActionButton variant="ghost" onClick={() => setShowForm(false)}>Cancel</ActionButton>
