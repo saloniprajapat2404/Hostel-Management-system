@@ -72,8 +72,8 @@ public class UserService {
                 throw new ApiException("Super Admin can only create SUPER_ADMIN, ADMIN, WARDEN or STUDENT users", 400);
             }
         } else if (current.getRole() == Role.ADMIN) {
-            if (targetRole != Role.ADMIN && targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
-                throw new ApiException("Admin can only create ADMIN, WARDEN or STUDENT users", 400);
+            if (targetRole != Role.WARDEN && targetRole != Role.STUDENT) {
+                throw new ApiException("Admin can only create WARDEN or STUDENT users", 400);
             }
         } else {
             throw new ApiException("Access denied", 403);
@@ -98,7 +98,11 @@ public class UserService {
         user.setParentPhone(blankToNull(request.parentPhone()));
         applyStudentProfileFields(user, request.aadharNumber(), request.addressLine(),
                 request.city(), request.state(), request.pincode());
-        user.setActive(true);
+        boolean active = request.active() == null || Boolean.TRUE.equals(request.active());
+        if (!active && current.getRole() != Role.SUPER_ADMIN && current.getRole() != Role.ADMIN) {
+            throw new ApiException("Only Super Admin or Admin can create inactive users", 403);
+        }
+        user.setActive(active);
         return UserDto.from(userRepository.save(user));
     }
 
@@ -167,6 +171,9 @@ public class UserService {
             user.setPincode(pincode);
         }
         if (request.active() != null) {
+            if (current.getRole() != Role.SUPER_ADMIN && current.getRole() != Role.ADMIN) {
+                throw new ApiException("Only Super Admin or Admin can change account status", 403);
+            }
             user.setActive(request.active());
         }
         return UserDto.from(userRepository.save(user));

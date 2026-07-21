@@ -43,11 +43,12 @@ export default function AllocationsPage() {
     const beds = []
     for (const room of rooms) {
       if (room.active === false) continue
+      if (room.status === 'MAINTENANCE') continue
       for (const bed of room.beds || []) {
-        if (!bed.occupied) {
+        if (!bed.occupied && !bed.underMaintenance) {
           beds.push({
             id: bed.id,
-            label: `${room.roomNumber} · ${bed.bedLabel}`,
+            label: `${room.roomNumber} · ${bed.bedLabel}${room.wing ? ` · Wing ${room.wing}` : ''}`,
           })
         }
       }

@@ -47,6 +47,10 @@ export default function UsersPage() {
   const session = getSession()
   const role = (params.get('role') || 'STUDENT').toUpperCase()
   const canManage = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
+  const canCreate =
+    session?.role === 'SUPER_ADMIN' ||
+    (session?.role === 'ADMIN' && role !== 'ADMIN' && role !== 'SUPER_ADMIN')
+  const canToggleActive = canManage
   const readOnly = session?.role === 'WARDEN'
 
   const [users, setUsers] = useState([])
@@ -159,6 +163,10 @@ export default function UsersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!canManage) return
+    if (!editingId && !canCreate) {
+      setError('You do not have permission to create this user type.')
+      return
+    }
     setSaving(true)
     setError('')
 
@@ -210,6 +218,7 @@ export default function UsersPage() {
           role,
           studentId: form.studentId || null,
           phone,
+          active: canToggleActive ? Boolean(form.active) : true,
         }
         if (role === 'STUDENT') {
           body.parentPhone = parentPhone || null
@@ -253,7 +262,7 @@ export default function UsersPage() {
         title={title}
         subtitle={readOnly ? 'Students with room allocations (read-only).' : `Manage ${title.toLowerCase()}.`}
         actions={
-          canManage ? (
+          canCreate ? (
             <ActionButton onClick={openCreate}>{`Add ${title.slice(0, -1)}`}</ActionButton>
           ) : null
         }
@@ -353,14 +362,17 @@ export default function UsersPage() {
                 </Field>
               </>
             )}
-            {editingId && (
-              <Field label="Active">
-                <select className={fieldClass} value={form.active ? 'true' : 'false'} onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </Field>
-            )}
+            <Field label="Account status" required>
+              <select
+                className={fieldClass}
+                value={form.active !== false ? 'true' : 'false'}
+                disabled={!canToggleActive}
+                onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}
+              >
+                <option value="true">Active — can sign in</option>
+                <option value="false">Inactive — cannot sign in</option>
+              </select>
+            </Field>
             <div className="flex gap-2 sm:col-span-2">
               <ActionButton type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</ActionButton>
               <ActionButton variant="ghost" onClick={() => setShowForm(false)}>Cancel</ActionButton>

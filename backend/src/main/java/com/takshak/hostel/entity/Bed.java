@@ -13,6 +13,8 @@ public class Bed {
 
     private boolean occupied = false;
 
+    private boolean underMaintenance = false;
+
     public Bed() {
     }
 
@@ -38,5 +40,13 @@ public class Bed {
 
     public void setOccupied(boolean occupied) {
         this.occupied = occupied;
+    }
+
+    public boolean isUnderMaintenance() {
+        return underMaintenance;
+    }
+
+    public void setUnderMaintenance(boolean underMaintenance) {
+        this.underMaintenance = underMaintenance;
     }
 }

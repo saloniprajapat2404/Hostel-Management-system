@@ -4,6 +4,7 @@ import { apiPost } from '../../../utils/api'
 import { getSession } from '../../../utils/auth'
 import { digitsOnly, isTenDigitPhone } from '../../../utils/phone'
 import { fieldClass } from '../../ui/Page'
+import OnOffToggle from '../../ui/OnOffToggle'
 
 const USER_TYPES = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
@@ -13,7 +14,7 @@ const USER_TYPES = [
 ]
 const CREATABLE_BY_ROLE = {
   SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'WARDEN', 'STUDENT'],
-  ADMIN: ['ADMIN', 'WARDEN', 'STUDENT'],
+  ADMIN: ['WARDEN', 'STUDENT'],
 }
 
 const emptyForm = {
@@ -29,6 +30,7 @@ const emptyForm = {
   state: '',
   pincode: '',
   parentPhone: '',
+  active: true,
 }
 
 const studentOnlyFields = {
@@ -52,6 +54,7 @@ function RequiredMark() {
 
 export default function AddUserDashboardPanel({ open, onClose }) {
   const session = getSession()
+  const canToggleActive = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const allowedTypes = useMemo(
     () => USER_TYPES.filter((type) => CREATABLE_BY_ROLE[session?.role]?.includes(type.value)),
     [session?.role],
@@ -120,6 +123,7 @@ export default function AddUserDashboardPanel({ open, onClose }) {
         studentId: userType === 'STUDENT' ? form.studentId.trim() || null : null,
         phone,
         whatsappNumber: userType === 'STUDENT' ? whatsappNumber : null,
+        active: canToggleActive ? Boolean(form.active) : true,
         ...(userType === 'STUDENT' ? { ...buildStudentBody(), parentPhone: parentPhone || null } : {}),
       })
       setSuccess(`${selected.label} registered successfully.`)
@@ -157,23 +161,37 @@ export default function AddUserDashboardPanel({ open, onClose }) {
         </button>
       </div>
 
-      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--dash-muted)]">
-        User type
-        <RequiredMark />
-      </label>
-      <select
-        className={fieldClass}
-        value={userType}
-        onChange={(e) => handleTypeChange(e.target.value)}
-        aria-label="User type"
-        required
-      >
-        {allowedTypes.map(({ value, label }) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+        <div className="min-w-0">
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--dash-muted)]">
+            User type
+            <RequiredMark />
+          </label>
+          <select
+            className={fieldClass}
+            value={userType}
+            onChange={(e) => handleTypeChange(e.target.value)}
+            aria-label="User type"
+            required
+          >
+            {allowedTypes.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex sm:justify-end">
+          <OnOffToggle
+            id="dashboard-add-user-active-toggle"
+            label="Account status"
+            checked={form.active !== false}
+            canToggle={canToggleActive}
+            onChange={(next) => setForm({ ...form, active: next })}
+            className="sm:items-end"
+          />
+        </div>
+      </div>
       {error && (
         <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
           {error}

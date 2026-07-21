@@ -19,6 +19,7 @@ public record CreateUserRequest(
         String addressLine,
         String city,
         String state,
-        String pincode
+        String pincode,
+        Boolean active
 ) {
 }

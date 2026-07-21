@@ -334,9 +334,11 @@ export default function AppShell() {
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {user?.fullName || user?.email || 'User'}
                 </p>
-                <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
-                  {ROLE_BADGE[user?.role] || user?.role}
-                </span>
+                {user?.role && user.role !== 'SUPER_ADMIN' && (
+                  <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
+                    {ROLE_BADGE[user.role] || user.role}
+                  </span>
+                )}
               </div>
             </div>
           </div>

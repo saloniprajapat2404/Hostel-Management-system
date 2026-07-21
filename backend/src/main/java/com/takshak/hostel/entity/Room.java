@@ -1,5 +1,8 @@
 package com.takshak.hostel.entity;
 
+import com.takshak.hostel.enums.RoomGender;
+import com.takshak.hostel.enums.RoomStatus;
+import com.takshak.hostel.enums.RoomType;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.annotation.Id;
@@ -20,6 +23,17 @@ public class Room {
     private int capacity = 2;
 
     private boolean active = true;
+
+    /** Block / wing label, e.g. A, B, East. */
+    private String wing;
+
+    private RoomGender gender = RoomGender.MIXED;
+
+    private RoomType roomType = RoomType.STANDARD;
+
+    private RoomStatus status = RoomStatus.AVAILABLE;
+
+    private String notes;
 
     private List<Bed> beds = new ArrayList<>();
 
@@ -64,6 +78,46 @@ public class Room {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getWing() {
+        return wing;
+    }
+
+    public void setWing(String wing) {
+        this.wing = wing;
+    }
+
+    public RoomGender getGender() {
+        return gender == null ? RoomGender.MIXED : gender;
+    }
+
+    public void setGender(RoomGender gender) {
+        this.gender = gender;
+    }
+
+    public RoomType getRoomType() {
+        return roomType == null ? RoomType.STANDARD : roomType;
+    }
+
+    public void setRoomType(RoomType roomType) {
+        this.roomType = roomType;
+    }
+
+    public RoomStatus getStatus() {
+        return status == null ? RoomStatus.AVAILABLE : status;
+    }
+
+    public void setStatus(RoomStatus status) {
+        this.status = status;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     public List<Bed> getBeds() {

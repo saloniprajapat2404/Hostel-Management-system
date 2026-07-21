@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { digitsOnly, isTenDigitPhone } from '../utils/phone'
+import OnOffToggle from '../components/ui/OnOffToggle'
 import {
   ActionButton,
   Card,
@@ -35,7 +36,7 @@ const USER_TYPES = [
 ]
 const CREATABLE_BY_ROLE = {
   SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'WARDEN', 'STUDENT'],
-  ADMIN: ['ADMIN', 'WARDEN', 'STUDENT'],
+  ADMIN: ['WARDEN', 'STUDENT'],
 }
 
 const emptyForm = {
@@ -51,6 +52,7 @@ const emptyForm = {
   state: '',
   pincode: '',
   parentPhone: '',
+  active: true,
 }
 
 const studentOnlyFields = {
@@ -66,6 +68,7 @@ const studentOnlyFields = {
 
 export default function AddUserPage() {
   const session = getSession()
+  const canToggleActive = session?.role === 'SUPER_ADMIN' || session?.role === 'ADMIN'
   const allowedTypes = useMemo(
     () => USER_TYPES.filter((type) => CREATABLE_BY_ROLE[session?.role]?.includes(type.value)),
     [session?.role],
@@ -132,9 +135,12 @@ export default function AddUserPage() {
         studentId: userType === 'STUDENT' ? form.studentId.trim() || null : null,
         phone,
         whatsappNumber: userType === 'STUDENT' ? whatsappNumber : null,
+        active: canToggleActive ? Boolean(form.active) : true,
         ...(userType === 'STUDENT' ? { ...buildStudentBody(), parentPhone: parentPhone || null } : {}),
       })
-      setSuccess(`${selected.label} registered successfully.`)
+      setSuccess(
+        `${selected.label} registered successfully${form.active ? '' : ' (inactive — cannot sign in)'}.`,
+      )
       setForm(emptyForm)
     } catch (err) {
       setError(err.message || 'Registration failed')
@@ -151,7 +157,6 @@ export default function AddUserPage() {
     <div>
       <PageHeader
         title="Add User"
-        subtitle="Create Super Admin, Admin, Warden, or Student accounts based on your role."
       />
 
       {error && (
@@ -167,22 +172,36 @@ export default function AddUserPage() {
       )}
 
       <Card className="mb-6">
-        <Field label="User type" required>
-          <select
-            className={fieldClass}
-            value={userType}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            aria-label="User type"
-            required
-          >
-            {allowedTypes.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{selected.description}</p>
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+          <div className="min-w-0">
+            <Field label="User type" required>
+              <select
+                className={fieldClass}
+                value={userType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                aria-label="User type"
+                required
+              >
+                {allowedTypes.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{selected.description}</p>
+          </div>
+          <div className="flex sm:justify-end">
+            <OnOffToggle
+              id="add-user-active-toggle"
+              label="Account status"
+              checked={form.active !== false}
+              canToggle={canToggleActive}
+              onChange={(next) => setForm({ ...form, active: next })}
+              className="sm:items-end"
+            />
+          </div>
+        </div>
       </Card>
       <Card>
         <div key={userType} className="motion-safe:animate-[fade-in-up_0.25s_ease-out]">

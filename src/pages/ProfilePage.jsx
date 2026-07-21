@@ -192,7 +192,15 @@ export default function ProfilePage() {
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">{form.fullName || 'Your profile'}</h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{session?.email}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusBadge tone="teal">{session?.role}</StatusBadge>
+                  {session?.role && session.role !== 'SUPER_ADMIN' && (
+                    <StatusBadge tone="teal">
+                      {{
+                        ADMIN: 'Admin',
+                        WARDEN: 'Warden',
+                        STUDENT: 'Student',
+                      }[session.role] || session.role}
+                    </StatusBadge>
+                  )}
                   {session?.studentId && <StatusBadge tone="slate">ID: {session.studentId}</StatusBadge>}
                 </div>
                 {form.profilePicture && (

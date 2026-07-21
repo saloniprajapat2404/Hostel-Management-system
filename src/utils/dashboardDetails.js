@@ -59,13 +59,13 @@ export async function fetchDashboardDetail(detailKey) {
       const rooms = (await apiGet('/api/rooms')) || []
       let beds = flattenBeds(rooms)
       if (detailKey === 'beds-occupied') beds = beds.filter((b) => b.occupied)
-      if (detailKey === 'beds-vacant') beds = beds.filter((b) => !b.occupied)
+      if (detailKey === 'beds-vacant') beds = beds.filter((b) => !b.occupied && !b.underMaintenance)
       return beds.map((b) => ({
         id: `${b.roomNumber}-${b.bedLabel}`,
         primary: `${b.roomNumber} · Bed ${b.bedLabel}`,
-        secondary: `Floor ${b.floor}`,
-        meta: b.occupied ? 'Occupied' : 'Vacant',
-        tone: b.occupied ? 'teal' : 'green',
+        secondary: `Floor ${b.floor}${b.occupantName ? ` · ${b.occupantName}` : ''}`,
+        meta: b.underMaintenance ? 'Maintenance' : b.occupied ? 'Occupied' : 'Vacant',
+        tone: b.underMaintenance ? 'amber' : b.occupied ? 'teal' : 'green',
       }))
     }
     case 'students': {

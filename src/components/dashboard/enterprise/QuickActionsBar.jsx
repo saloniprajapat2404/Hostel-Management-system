@@ -62,7 +62,7 @@ const ACTIONS = {
   },
   addUser: {
     label: 'Add User',
-    hint: 'Register admin, warden, or student accounts',
+    hint: 'Register warden or student accounts',
     to: '/app/add-user',
     icon: UserPlus,
     roles: ['ADMIN', 'SUPER_ADMIN'],

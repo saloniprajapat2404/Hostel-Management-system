@@ -59,6 +59,12 @@ public class AllocationService {
         if (!bedWithRoom.room().isActive()) {
             throw new ApiException("Room is inactive", 400);
         }
+        if (bedWithRoom.room().getStatus() == com.takshak.hostel.enums.RoomStatus.MAINTENANCE) {
+            throw new ApiException("Room is under maintenance", 400);
+        }
+        if (bedWithRoom.bed().isUnderMaintenance()) {
+            throw new ApiException("Bed is under maintenance", 400);
+        }
         if (bedWithRoom.bed().isOccupied()
                 || allocationRepository.findByBedIdAndActiveTrue(bedWithRoom.bed().getId()).isPresent()) {
             throw new ApiException("Bed is already occupied", 409);

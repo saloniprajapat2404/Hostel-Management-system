@@ -77,7 +77,7 @@ public class BedRepository {
     public long countByOccupiedFalse() {
         return roomRepository.findAll().stream()
                 .flatMap(r -> r.getBeds().stream())
-                .filter(b -> !b.isOccupied())
+                .filter(b -> !b.isOccupied() && !b.isUnderMaintenance())
                 .count();
     }
 
