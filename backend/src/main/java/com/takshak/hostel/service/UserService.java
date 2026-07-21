@@ -232,7 +232,10 @@ public class UserService {
             if (target.getRole() == Role.SUPER_ADMIN) {
                 throw new ApiException("Access denied", 403);
             }
-            if (target.getRole() != Role.ADMIN && target.getRole() != Role.WARDEN && target.getRole() != Role.STUDENT) {
+            if (target.getRole() == Role.ADMIN) {
+                throw new ApiException("Admin cannot edit or delete other admins", 403);
+            }
+            if (target.getRole() != Role.WARDEN && target.getRole() != Role.STUDENT) {
                 throw new ApiException("Access denied", 403);
             }
             return;

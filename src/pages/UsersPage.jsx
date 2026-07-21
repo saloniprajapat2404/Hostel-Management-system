@@ -61,7 +61,10 @@ export default function UsersPage() {
   const canCreate =
     session?.role === 'SUPER_ADMIN' ||
     (session?.role === 'ADMIN' && role !== 'ADMIN' && role !== 'SUPER_ADMIN')
-  const readOnly = session?.role === 'WARDEN'
+  /** Admin can view the Admins list but cannot edit/delete other admins. */
+  const adminsViewOnly = session?.role === 'ADMIN' && role === 'ADMIN'
+  const canMutate = canManage && !adminsViewOnly
+  const readOnly = session?.role === 'WARDEN' || adminsViewOnly
 
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -128,21 +131,28 @@ export default function UsersPage() {
     setSortDir(next.sortDir)
   }
 
-  const userColumns = canManage
+  const userColumns = adminsViewOnly
     ? [
         { key: 'fullName', label: 'Name' },
         { key: 'email', label: 'Email' },
-        { key: 'studentId', label: 'ID' },
         { key: 'phone', label: 'Phone' },
         { key: 'active', label: 'Status' },
-        { key: 'actions', label: 'Actions', sortable: false },
       ]
-    : [
-        { key: 'fullName', label: 'Name' },
-        { key: 'email', label: 'Email' },
-        { key: 'studentId', label: 'Student ID' },
-        { key: 'active', label: 'Status' },
-      ]
+    : canManage
+      ? [
+          { key: 'fullName', label: 'Name' },
+          { key: 'email', label: 'Email' },
+          { key: 'studentId', label: 'ID' },
+          { key: 'phone', label: 'Phone' },
+          { key: 'active', label: 'Status' },
+          { key: 'actions', label: 'Actions', sortable: false },
+        ]
+      : [
+          { key: 'fullName', label: 'Name' },
+          { key: 'email', label: 'Email' },
+          { key: 'studentId', label: 'Student ID' },
+          { key: 'active', label: 'Status' },
+        ]
 
   const openCreate = () => {
     setEditingId(null)
@@ -151,6 +161,7 @@ export default function UsersPage() {
   }
 
   const openEdit = (user) => {
+    if (!canMutate) return
     setEditingId(user.id)
     setForm({
       email: user.email || '',
@@ -172,9 +183,13 @@ export default function UsersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!canManage) return
+    if (!canMutate && !canCreate) return
     if (!editingId && !canCreate) {
       setError('You do not have permission to create this user type.')
+      return
+    }
+    if (editingId && !canMutate) {
+      setError('You do not have permission to edit this user.')
       return
     }
     const validationErr = validateContactProfileFields(form)
@@ -220,7 +235,7 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!canManage || !window.confirm('Delete this user?')) return
+    if (!canMutate || !window.confirm('Delete this user?')) return
     if (id === session?.id) {
       setError('You cannot delete your own account')
       return
@@ -237,7 +252,13 @@ export default function UsersPage() {
     <div>
       <PageHeader
         title={title}
-        subtitle={readOnly ? 'Students with room allocations (read-only).' : `Manage ${title.toLowerCase()}.`}
+        subtitle={
+          adminsViewOnly
+            ? 'View admin accounts (read-only).'
+            : readOnly
+              ? 'Students with room allocations (read-only).'
+              : `Manage ${title.toLowerCase()}.`
+        }
         actions={
           canCreate ? (
             <ActionButton onClick={openCreate}>{`Add ${title.slice(0, -1)}`}</ActionButton>
@@ -248,7 +269,7 @@ export default function UsersPage() {
       {error && <div className="mb-4"><ErrorBlock message={error} onRetry={load} /></div>}
       {loading && <LoadingBlock />}
 
-      {showForm && canManage && (
+      {showForm && canMutate && (
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">{formTitle}</h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
@@ -372,14 +393,18 @@ export default function UsersPage() {
             <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
               <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{u.fullName}</td>
               <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.email}</td>
-              <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.studentId || '—'}</td>
-              {canManage && <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.phone || '—'}</td>}
+              {!adminsViewOnly && (
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.studentId || '—'}</td>
+              )}
+              {(canManage || adminsViewOnly) && (
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.phone || '—'}</td>
+              )}
               <td className="px-4 py-3">
                 <StatusBadge tone={u.active !== false ? 'green' : 'red'}>
                   {u.active !== false ? 'Active' : 'Inactive'}
                 </StatusBadge>
               </td>
-              {canManage && (
+              {canMutate && (
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     <ActionButton variant="ghost" onClick={() => openEdit(u)}>Edit</ActionButton>

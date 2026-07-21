@@ -148,10 +148,12 @@ export default function ExpensesDashboardPanel({ open, onClose }) {
             type="number"
             min="1"
             step="1"
-            className={`${fieldClass} mt-1`}
+            inputMode="decimal"
+            className={`${fieldClass} input-no-spinner mt-1`}
             required
             value={form.amount}
             onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+            placeholder="Enter amount"
           />
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">

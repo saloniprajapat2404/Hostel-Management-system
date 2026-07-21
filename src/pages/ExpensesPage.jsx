@@ -190,13 +190,15 @@ export default function ExpensesPage() {
             </Field>
             <Field label="Amount (₹)" required>
               <input
-                className={fieldClass}
+                className={`${fieldClass} input-no-spinner`}
                 type="number"
                 min="1"
                 step="1"
+                inputMode="decimal"
                 required
                 value={form.amount}
                 onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                placeholder="Enter amount"
               />
             </Field>
             <Field label="Description">
