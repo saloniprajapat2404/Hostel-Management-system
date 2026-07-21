@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import { apiPost } from '../../../utils/api'
 import { getSession } from '../../../utils/auth'
+import { digitsOnly, isTenDigitPhone } from '../../../utils/phone'
 import { fieldClass } from '../../ui/Page'
 
 const USER_TYPES = [
@@ -41,6 +42,14 @@ const studentOnlyFields = {
   parentPhone: '',
 }
 
+function RequiredMark() {
+  return (
+    <span className="ml-0.5 font-semibold text-red-600 dark:text-red-400" aria-hidden="true">
+      *
+    </span>
+  )
+}
+
 export default function AddUserDashboardPanel({ open, onClose }) {
   const session = getSession()
   const allowedTypes = useMemo(
@@ -73,7 +82,7 @@ export default function AddUserDashboardPanel({ open, onClose }) {
     city: form.city.trim() || null,
     state: form.state.trim() || null,
     pincode: form.pincode.replace(/\D/g, '') || null,
-    parentPhone: form.parentPhone.trim() || null,
+    parentPhone: form.parentPhone || null,
   })
 
   const handleSubmit = async (e) => {
@@ -81,6 +90,27 @@ export default function AddUserDashboardPanel({ open, onClose }) {
     setSaving(true)
     setError('')
     setSuccess('')
+
+    const phone = digitsOnly(form.phone)
+    const whatsappNumber = digitsOnly(form.whatsappNumber)
+    const parentPhone = digitsOnly(form.parentPhone)
+
+    if (!isTenDigitPhone(phone)) {
+      setError('Phone number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (userType === 'STUDENT' && !isTenDigitPhone(whatsappNumber)) {
+      setError('WhatsApp number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (userType === 'STUDENT' && parentPhone && !isTenDigitPhone(parentPhone)) {
+      setError('Parent mobile number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+
     try {
       await apiPost('/api/users', {
         email: form.email.trim(),
@@ -88,9 +118,9 @@ export default function AddUserDashboardPanel({ open, onClose }) {
         fullName: form.fullName.trim(),
         role: userType,
         studentId: userType === 'STUDENT' ? form.studentId.trim() || null : null,
-        phone: form.phone.trim() || null,
-        whatsappNumber: userType === 'STUDENT' ? form.whatsappNumber.trim() || null : null,
-        ...(userType === 'STUDENT' ? buildStudentBody() : {}),
+        phone,
+        whatsappNumber: userType === 'STUDENT' ? whatsappNumber : null,
+        ...(userType === 'STUDENT' ? { ...buildStudentBody(), parentPhone: parentPhone || null } : {}),
       })
       setSuccess(`${selected.label} registered successfully.`)
       setForm(emptyForm)
@@ -113,7 +143,9 @@ export default function AddUserDashboardPanel({ open, onClose }) {
           </span>
           <div>
             <h3 className="text-[15px] font-semibold text-[var(--dash-text)]">Add user</h3>
-            <p className="text-[12px] text-[var(--dash-muted)]">Choose role and register from dashboard</p>
+            <p className="text-[12px] text-[var(--dash-muted)]">
+              Fields marked with <span className="text-red-500">*</span> are mandatory
+            </p>
           </div>
         </div>
         <button
@@ -127,12 +159,14 @@ export default function AddUserDashboardPanel({ open, onClose }) {
 
       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--dash-muted)]">
         User type
+        <RequiredMark />
       </label>
       <select
         className={fieldClass}
         value={userType}
         onChange={(e) => handleTypeChange(e.target.value)}
         aria-label="User type"
+        required
       >
         {allowedTypes.map(({ value, label }) => (
           <option key={value} value={value}>
@@ -154,6 +188,7 @@ export default function AddUserDashboardPanel({ open, onClose }) {
       <form key={userType} onSubmit={handleSubmit} className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
           Full name
+          <RequiredMark />
           <input
             className={`${fieldClass} mt-1`}
             required
@@ -164,6 +199,7 @@ export default function AddUserDashboardPanel({ open, onClose }) {
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
           Email
+          <RequiredMark />
           <input
             type="email"
             className={`${fieldClass} mt-1`}
@@ -175,6 +211,7 @@ export default function AddUserDashboardPanel({ open, onClose }) {
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
           Password
+          <RequiredMark />
           <input
             type="password"
             className={`${fieldClass} mt-1`}
@@ -186,12 +223,18 @@ export default function AddUserDashboardPanel({ open, onClose }) {
           />
         </label>
         <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
-          Phone
+          Phone No
+          <RequiredMark />
           <input
             className={`${fieldClass} mt-1`}
+            required
+            inputMode="numeric"
+            maxLength={10}
+            pattern="\d{10}"
+            title="Enter exactly 10 digits"
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="Optional"
+            onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+            placeholder="10-digit mobile number"
           />
         </label>
         {userType === 'STUDENT' && (
@@ -222,18 +265,28 @@ export default function AddUserDashboardPanel({ open, onClose }) {
               Parent mobile no
               <input
                 className={`${fieldClass} mt-1`}
+                inputMode="numeric"
+                maxLength={10}
+                pattern="\d{10}"
+                title="Enter exactly 10 digits"
                 value={form.parentPhone}
-                onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-                placeholder="Optional"
+                onChange={(e) => setForm({ ...form, parentPhone: digitsOnly(e.target.value) })}
+                placeholder="10 digits (optional)"
               />
             </label>
             <label className="block text-[12px] font-medium text-[var(--dash-muted)]">
-              WhatsApp number
+              WhatsApp No
+              <RequiredMark />
               <input
                 className={`${fieldClass} mt-1`}
+                required
+                inputMode="numeric"
+                maxLength={10}
+                pattern="\d{10}"
+                title="Enter exactly 10 digits"
                 value={form.whatsappNumber}
-                onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })}
-                placeholder="For notice alerts"
+                onChange={(e) => setForm({ ...form, whatsappNumber: digitsOnly(e.target.value) })}
+                placeholder="10-digit WhatsApp number"
               />
             </label>
             <label className="block text-[12px] font-medium text-[var(--dash-muted)] sm:col-span-2">

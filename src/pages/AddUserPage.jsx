@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { digitsOnly, isTenDigitPhone } from '../utils/phone'
 import {
   ActionButton,
   Card,
@@ -93,7 +94,7 @@ export default function AddUserPage() {
     city: form.city.trim() || null,
     state: form.state.trim() || null,
     pincode: form.pincode.replace(/\D/g, '') || null,
-    parentPhone: form.parentPhone.trim() || null,
+    parentPhone: form.parentPhone || null,
   })
 
   const handleSubmit = async (e) => {
@@ -101,6 +102,27 @@ export default function AddUserPage() {
     setSaving(true)
     setError('')
     setSuccess('')
+
+    const phone = digitsOnly(form.phone)
+    const whatsappNumber = digitsOnly(form.whatsappNumber)
+    const parentPhone = digitsOnly(form.parentPhone)
+
+    if (!isTenDigitPhone(phone)) {
+      setError('Phone number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (userType === 'STUDENT' && !isTenDigitPhone(whatsappNumber)) {
+      setError('WhatsApp number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (userType === 'STUDENT' && parentPhone && !isTenDigitPhone(parentPhone)) {
+      setError('Parent mobile number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+
     try {
       await apiPost('/api/users', {
         email: form.email.trim(),
@@ -108,9 +130,9 @@ export default function AddUserPage() {
         fullName: form.fullName.trim(),
         role: userType,
         studentId: userType === 'STUDENT' ? form.studentId.trim() || null : null,
-        phone: form.phone.trim() || null,
-        whatsappNumber: userType === 'STUDENT' ? form.whatsappNumber.trim() || null : null,
-        ...(userType === 'STUDENT' ? buildStudentBody() : {}),
+        phone,
+        whatsappNumber: userType === 'STUDENT' ? whatsappNumber : null,
+        ...(userType === 'STUDENT' ? { ...buildStudentBody(), parentPhone: parentPhone || null } : {}),
       })
       setSuccess(`${selected.label} registered successfully.`)
       setForm(emptyForm)
@@ -145,12 +167,13 @@ export default function AddUserPage() {
       )}
 
       <Card className="mb-6">
-        <Field label="User type">
+        <Field label="User type" required>
           <select
             className={fieldClass}
             value={userType}
             onChange={(e) => handleTypeChange(e.target.value)}
             aria-label="User type"
+            required
           >
             {allowedTypes.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -167,11 +190,11 @@ export default function AddUserPage() {
             {selected.label} details
           </h2>
           <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
-            Fill in the account information below.
+            Fields marked with <span className="text-red-500">*</span> are mandatory.
           </p>
 
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Full name">
+            <Field label="Full name" required>
               <input
                 className={fieldClass}
                 required
@@ -180,7 +203,7 @@ export default function AddUserPage() {
                 placeholder="Enter full name"
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required>
               <input
                 type="email"
                 className={fieldClass}
@@ -190,7 +213,7 @@ export default function AddUserPage() {
                 placeholder="name@example.com"
               />
             </Field>
-            <Field label="Password">
+            <Field label="Password" required>
               <input
                 type="password"
                 className={fieldClass}
@@ -201,12 +224,17 @@ export default function AddUserPage() {
                 placeholder="Minimum 6 characters"
               />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone No" required>
               <input
                 className={fieldClass}
+                required
+                inputMode="numeric"
+                maxLength={10}
+                pattern="\d{10}"
+                title="Enter exactly 10 digits"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="Optional"
+                onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+                placeholder="10-digit mobile number"
               />
             </Field>
             {userType === 'STUDENT' && (
@@ -234,17 +262,26 @@ export default function AddUserPage() {
                 <Field label="Parent mobile no">
                   <input
                     className={fieldClass}
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="\d{10}"
+                    title="Enter exactly 10 digits"
                     value={form.parentPhone}
-                    onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-                    placeholder="Optional"
+                    onChange={(e) => setForm({ ...form, parentPhone: digitsOnly(e.target.value) })}
+                    placeholder="10 digits (optional)"
                   />
                 </Field>
-                <Field label="WhatsApp number">
+                <Field label="WhatsApp No" required>
                   <input
                     className={fieldClass}
+                    required
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="\d{10}"
+                    title="Enter exactly 10 digits"
                     value={form.whatsappNumber}
-                    onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })}
-                    placeholder="For notice alerts (e.g. +919876543210)"
+                    onChange={(e) => setForm({ ...form, whatsappNumber: digitsOnly(e.target.value) })}
+                    placeholder="10-digit WhatsApp number"
                   />
                 </Field>
                 <Field label="Address line" className="sm:col-span-2">

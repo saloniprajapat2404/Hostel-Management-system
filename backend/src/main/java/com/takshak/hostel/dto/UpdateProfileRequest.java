@@ -1,12 +1,13 @@
 package com.takshak.hostel.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateProfileRequest(
         @NotBlank String fullName,
-        String phone,
-        String parentPhone,
+        @Pattern(regexp = "^$|\\d{10}", message = "Phone number must be exactly 10 digits") String phone,
+        @Pattern(regexp = "^$|\\d{10}", message = "Parent mobile number must be exactly 10 digits") String parentPhone,
         String aadharNumber,
         @Size(max = 500_000, message = "Profile picture is too large")
         String profilePicture,

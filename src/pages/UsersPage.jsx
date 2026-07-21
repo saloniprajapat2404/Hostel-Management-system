@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
+import { digitsOnly, isTenDigitPhone } from '../utils/phone'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
@@ -142,9 +143,9 @@ export default function UsersPage() {
       password: '',
       fullName: user.fullName || '',
       studentId: user.studentId || '',
-      phone: user.phone || '',
-      whatsappNumber: user.whatsappNumber || '',
-      parentPhone: user.parentPhone || '',
+      phone: digitsOnly(user.phone),
+      whatsappNumber: digitsOnly(user.whatsappNumber),
+      parentPhone: digitsOnly(user.parentPhone),
       aadharNumber: user.aadharNumber || '',
       addressLine: user.addressLine || '',
       city: user.city || '',
@@ -160,19 +161,40 @@ export default function UsersPage() {
     if (!canManage) return
     setSaving(true)
     setError('')
+
+    const phone = digitsOnly(form.phone)
+    const whatsappNumber = digitsOnly(form.whatsappNumber)
+    const parentPhone = digitsOnly(form.parentPhone)
+
+    if (!isTenDigitPhone(phone)) {
+      setError('Phone number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (role === 'STUDENT' && !isTenDigitPhone(whatsappNumber)) {
+      setError('WhatsApp number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+    if (role === 'STUDENT' && parentPhone && !isTenDigitPhone(parentPhone)) {
+      setError('Parent mobile number must be exactly 10 digits.')
+      setSaving(false)
+      return
+    }
+
     try {
       if (editingId) {
         const body = {
           email: form.email,
           fullName: form.fullName,
           studentId: form.studentId || null,
-          phone: form.phone || null,
+          phone,
           active: form.active,
         }
         if (form.password) body.password = form.password
         if (role === 'STUDENT') {
-          body.parentPhone = form.parentPhone || null
-          body.whatsappNumber = form.whatsappNumber || null
+          body.parentPhone = parentPhone || null
+          body.whatsappNumber = whatsappNumber
           body.aadharNumber = form.aadharNumber.replace(/\D/g, '') || null
           body.addressLine = form.addressLine || null
           body.city = form.city || null
@@ -187,11 +209,11 @@ export default function UsersPage() {
           fullName: form.fullName,
           role,
           studentId: form.studentId || null,
-          phone: form.phone || null,
+          phone,
         }
         if (role === 'STUDENT') {
-          body.parentPhone = form.parentPhone || null
-          body.whatsappNumber = form.whatsappNumber || null
+          body.parentPhone = parentPhone || null
+          body.whatsappNumber = whatsappNumber
           body.aadharNumber = form.aadharNumber.replace(/\D/g, '') || null
           body.addressLine = form.addressLine || null
           body.city = form.city || null
@@ -242,19 +264,32 @@ export default function UsersPage() {
 
       {showForm && canManage && (
         <Card className="mb-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">{formTitle}</h2>
+          <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">{formTitle}</h2>
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Fields marked with <span className="text-red-500">*</span> are mandatory.
+          </p>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Full name">
+            <Field label="Full name" required>
               <input className={fieldClass} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required>
               <input type="email" className={fieldClass} required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
-            <Field label={editingId ? 'Password (optional)' : 'Password'}>
+            <Field label={editingId ? 'Password (optional)' : 'Password'} required={!editingId}>
               <input type="password" className={fieldClass} required={!editingId} minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </Field>
-            <Field label="Phone">
-              <input className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Field label="Phone No" required>
+              <input
+                className={fieldClass}
+                required
+                inputMode="numeric"
+                maxLength={10}
+                pattern="\d{10}"
+                title="Enter exactly 10 digits"
+                placeholder="10-digit mobile number"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
+              />
             </Field>
             {role === 'STUDENT' && (
               <Field label="Student ID">
@@ -274,14 +309,28 @@ export default function UsersPage() {
                   />
                 </Field>
                 <Field label="Parent mobile no">
-                  <input className={fieldClass} value={form.parentPhone} onChange={(e) => setForm({ ...form, parentPhone: e.target.value })} />
-                </Field>
-                <Field label="WhatsApp number">
                   <input
                     className={fieldClass}
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="\d{10}"
+                    title="Enter exactly 10 digits"
+                    placeholder="10 digits (optional)"
+                    value={form.parentPhone}
+                    onChange={(e) => setForm({ ...form, parentPhone: digitsOnly(e.target.value) })}
+                  />
+                </Field>
+                <Field label="WhatsApp No" required>
+                  <input
+                    className={fieldClass}
+                    required
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="\d{10}"
+                    title="Enter exactly 10 digits"
+                    placeholder="10-digit WhatsApp number"
                     value={form.whatsappNumber}
-                    onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })}
-                    placeholder="+91XXXXXXXXXX"
+                    onChange={(e) => setForm({ ...form, whatsappNumber: digitsOnly(e.target.value) })}
                   />
                 </Field>
                 <Field label="Address line">

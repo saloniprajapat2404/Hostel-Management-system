@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Camera, MapPin, UserRound } from 'lucide-react'
 import { apiGet, apiPut } from '../utils/api'
 import { getSession, saveSession, getToken } from '../utils/auth'
+import { digitsOnly, isTenDigitPhone } from '../utils/phone'
 import StudentFeesPanel from '../components/fees/StudentFeesPanel'
 import {
   ActionButton,
@@ -44,7 +45,7 @@ export default function ProfilePage() {
   const applyUser = useCallback((user) => {
     setForm({
       fullName: user?.fullName || '',
-      phone: user?.phone || '',
+      phone: digitsOnly(user?.phone),
       aadharNumber: user?.aadharNumber || '',
       profilePicture: user?.profilePicture || '',
       addressLine: user?.addressLine || '',
@@ -75,9 +76,13 @@ export default function ProfilePage() {
   }, [load])
 
   const persistProfile = async (nextForm) => {
+    const phone = digitsOnly(nextForm.phone)
+    if (phone && !isTenDigitPhone(phone)) {
+      throw new Error('Phone number must be exactly 10 digits.')
+    }
     const updated = await apiPut('/api/users/me/profile', {
       fullName: nextForm.fullName,
-      phone: nextForm.phone,
+      phone: phone || null,
       aadharNumber: nextForm.aadharNumber.replace(/\D/g, '') || null,
       profilePicture: nextForm.profilePicture || null,
       addressLine: nextForm.addressLine,
@@ -210,7 +215,7 @@ export default function ProfilePage() {
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Personal details</h2>
               </div>
               <div className="space-y-4">
-                <Field label="Full name">
+                <Field label="Full name" required>
                   <input
                     className={fieldClass}
                     required
@@ -218,11 +223,17 @@ export default function ProfilePage() {
                     onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label="Phone No" required>
                   <input
                     className={fieldClass}
+                    required
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="\d{10}"
+                    title="Enter exactly 10 digits"
+                    placeholder="10-digit mobile number"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) => setForm({ ...form, phone: digitsOnly(e.target.value) })}
                   />
                 </Field>
                 {isStudent && (
