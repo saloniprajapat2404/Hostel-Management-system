@@ -26,6 +26,8 @@ public class Expense {
 
     private Instant createdAt = Instant.now();
 
+    private String branchId;
+
     public String getId() {
         return id;
     }
@@ -88,5 +90,13 @@ public class Expense {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

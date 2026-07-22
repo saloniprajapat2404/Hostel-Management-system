@@ -15,6 +15,7 @@ import com.takshak.hostel.enums.RoomType;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.RoomRepository;
+import com.takshak.hostel.security.BranchScope;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,46 +33,58 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final AllocationRepository allocationRepository;
+    private final BranchScope branchScope;
 
-    public RoomService(RoomRepository roomRepository, AllocationRepository allocationRepository) {
+    public RoomService(
+            RoomRepository roomRepository,
+            AllocationRepository allocationRepository,
+            BranchScope branchScope) {
         this.roomRepository = roomRepository;
         this.allocationRepository = allocationRepository;
+        this.branchScope = branchScope;
     }
 
     public List<RoomDto> listRooms() {
-        Map<String, Allocation> byBed = activeAllocationsByBed();
-        return roomRepository.findAllByOrderByRoomNumberAsc().stream()
+        String branchId = branchScope.requireBranchId();
+        Map<String, Allocation> byBed = activeAllocationsByBed(branchId);
+        return roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId).stream()
                 .map(room -> toDto(room, byBed))
                 .toList();
     }
 
     public RoomDto getRoom(String id) {
+        String branchId = branchScope.requireBranchId();
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
-        return toDto(room, activeAllocationsByBed());
+        assertSameBranch(room, branchId);
+        return toDto(room, activeAllocationsByBed(branchId));
     }
 
     public RoomDto createRoom(CreateRoomRequest request) {
-        if (roomRepository.existsByRoomNumberIgnoreCase(request.roomNumber())) {
-            throw new ApiException("Room number already exists", 409);
+        String branchId = branchScope.requireBranchId();
+        if (roomRepository.existsByBranchIdAndRoomNumberIgnoreCase(branchId, request.roomNumber())) {
+            throw new ApiException("Room number already exists in this branch", 409);
         }
         Room room = new Room();
+        room.setBranchId(branchId);
         applyCreateFields(room, request.roomNumber(), request.floor(), request.capacity(),
                 request.wing(), request.gender(), request.roomType(), request.status(), request.notes());
         return toDto(roomRepository.save(room), Map.of());
     }
 
     public List<RoomDto> bulkCreateRooms(BulkCreateRoomsRequest request) {
+        String branchId = branchScope.requireBranchId();
         int pad = Math.max(1, request.padDigits());
         List<Room> created = new ArrayList<>();
         for (int i = 0; i < request.count(); i++) {
             int num = request.startNumber() + i;
             String roomNumber = (request.prefix() == null ? "" : request.prefix().trim().toUpperCase())
                     + String.format("%0" + pad + "d", num);
-            if (roomRepository.existsByRoomNumberIgnoreCase(roomNumber)) {
+            if (roomRepository.existsByBranchIdAndRoomNumberIgnoreCase(branchId, roomNumber)) {
                 throw new ApiException("Room number already exists: " + roomNumber, 409);
             }
             Room room = new Room();
+            room.setBranchId(branchId);
             applyCreateFields(room, roomNumber, request.floor(), request.capacity(),
                     request.wing(), request.gender(), request.roomType(), request.status(), null);
             created.add(roomRepository.save(room));
@@ -80,13 +93,15 @@ public class RoomService {
     }
 
     public RoomDto updateRoom(String id, UpdateRoomRequest request) {
+        String branchId = branchScope.requireBranchId();
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
+        assertSameBranch(room, branchId);
         if (request.roomNumber() != null && !request.roomNumber().isBlank()) {
-            roomRepository.findByRoomNumberIgnoreCase(request.roomNumber())
+            roomRepository.findByBranchIdAndRoomNumberIgnoreCase(branchId, request.roomNumber())
                     .filter(r -> !r.getId().equals(id))
                     .ifPresent(r -> {
-                        throw new ApiException("Room number already exists", 409);
+                        throw new ApiException("Room number already exists in this branch", 409);
                     });
             room.setRoomNumber(request.roomNumber().trim().toUpperCase());
         }
@@ -125,12 +140,14 @@ public class RoomService {
             room.setNotes(blankToNull(request.notes()));
         }
         refreshDerivedStatus(room);
-        return toDto(roomRepository.save(room), activeAllocationsByBed());
+        return toDto(roomRepository.save(room), activeAllocationsByBed(branchId));
     }
 
     public RoomDto updateBed(String roomId, String bedId, UpdateBedRequest request) {
+        String branchId = branchScope.requireBranchId();
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
+        assertSameBranch(room, branchId);
         Bed bed = room.getBeds().stream()
                 .filter(b -> bedId.equals(b.getId()))
                 .findFirst()
@@ -151,12 +168,14 @@ public class RoomService {
             bed.setUnderMaintenance(request.underMaintenance());
         }
         refreshDerivedStatus(room);
-        return toDto(roomRepository.save(room), activeAllocationsByBed());
+        return toDto(roomRepository.save(room), activeAllocationsByBed(branchId));
     }
 
     public void deleteRoom(String id) {
+        String branchId = branchScope.requireBranchId();
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Room not found", 404));
+        assertSameBranch(room, branchId);
         if (room.getBeds().stream().anyMatch(Bed::isOccupied)) {
             throw new ApiException("Cannot delete room with occupied beds. Deallocate students first.", 409);
         }
@@ -266,14 +285,20 @@ public class RoomService {
         return String.valueOf(n);
     }
 
-    private Map<String, Allocation> activeAllocationsByBed() {
+    private Map<String, Allocation> activeAllocationsByBed(String branchId) {
         Map<String, Allocation> map = new HashMap<>();
-        for (Allocation allocation : allocationRepository.findByActiveTrue()) {
+        for (Allocation allocation : allocationRepository.findByBranchIdAndActiveTrue(branchId)) {
             if (allocation.getBedId() != null) {
                 map.put(allocation.getBedId(), allocation);
             }
         }
         return map;
+    }
+
+    private void assertSameBranch(Room room, String branchId) {
+        if (room.getBranchId() == null || !room.getBranchId().equals(branchId)) {
+            throw new ApiException("Room not found", 404);
+        }
     }
 
     private RoomDto toDto(Room room, Map<String, Allocation> byBed) {

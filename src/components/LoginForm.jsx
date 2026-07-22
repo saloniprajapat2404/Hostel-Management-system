@@ -38,7 +38,8 @@ export default function LoginForm({ lang, hostelName, onError, onSuccessToast })
       saveSession({ token: result.token, user: result.user }, data.remember)
       setSuccess(true)
       onSuccessToast(t(lang, 'success'))
-      setTimeout(() => navigate('/app'), 800)
+      const target = result.user?.role === 'SUPER_ADMIN' ? '/superadmin' : '/app'
+      setTimeout(() => navigate(target), 800)
     } catch (err) {
       triggerShake()
       onError(err.message || t(lang, 'invalidCredentials'))

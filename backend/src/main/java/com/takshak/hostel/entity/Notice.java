@@ -45,6 +45,8 @@ public class Notice {
 
     private Instant whatsappSentAt;
 
+    private String branchId;
+
     public Notice() {
     }
 
@@ -169,5 +171,13 @@ public class Notice {
 
     public void setWhatsappSentAt(Instant whatsappSentAt) {
         this.whatsappSentAt = whatsappSentAt;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

@@ -1,5 +1,6 @@
 package com.takshak.hostel.config;
 
+import com.takshak.hostel.security.BranchFilter;
 import com.takshak.hostel.security.JwtAuthFilter;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -30,10 +31,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final BranchFilter branchFilter;
     private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDetailsService userDetailsService) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            BranchFilter branchFilter,
+            UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.branchFilter = branchFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -54,7 +60,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(branchFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -70,7 +77,7 @@ public class SecurityConfig {
                 "https://takshak-hostel-*.vercel.app"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Branch-Id"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

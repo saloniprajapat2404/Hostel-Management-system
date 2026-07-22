@@ -27,6 +27,8 @@ public class CheckInOut {
 
     private String notes;
 
+    private String branchId;
+
     public CheckInOut() {
     }
 
@@ -100,5 +102,13 @@ public class CheckInOut {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

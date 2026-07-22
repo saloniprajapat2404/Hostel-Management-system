@@ -4,6 +4,7 @@ import com.takshak.hostel.dto.DashboardStatsDto;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.AdmissionStatus;
 import com.takshak.hostel.enums.ComplaintStatus;
+import com.takshak.hostel.enums.NoticeStatus;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.AllocationRepository;
@@ -12,6 +13,7 @@ import com.takshak.hostel.repository.ComplaintRepository;
 import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.repository.RoomRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.time.YearMonth;
@@ -35,6 +37,7 @@ public class DashboardService {
     private final AdmissionRequestRepository admissionRequestRepository;
     private final ComplaintRepository complaintRepository;
     private final NoticeRepository noticeRepository;
+    private final BranchScope branchScope;
 
     public DashboardService(
             UserRepository userRepository,
@@ -43,7 +46,8 @@ public class DashboardService {
             AllocationRepository allocationRepository,
             AdmissionRequestRepository admissionRequestRepository,
             ComplaintRepository complaintRepository,
-            NoticeRepository noticeRepository) {
+            NoticeRepository noticeRepository,
+            BranchScope branchScope) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
         this.bedRepository = bedRepository;
@@ -51,10 +55,12 @@ public class DashboardService {
         this.admissionRequestRepository = admissionRequestRepository;
         this.complaintRepository = complaintRepository;
         this.noticeRepository = noticeRepository;
+        this.branchScope = branchScope;
     }
 
     public DashboardStatsDto stats() {
         User current = SecurityUtils.currentUser();
+        String branchId = branchScope.requireBranchId();
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("role", current.getRole().name());
 
@@ -65,7 +71,7 @@ public class DashboardService {
                 stats.put("myBedLabel", allocation.getBedLabel());
                 stats.put("myFloor", allocation.getFloor());
             });
-            stats.put("activeNotices", noticeRepository.countByStatus(com.takshak.hostel.enums.NoticeStatus.ACTIVE));
+            stats.put("activeNotices", noticeRepository.countByBranchIdAndStatus(branchId, NoticeStatus.ACTIVE));
             stats.put("myOpenComplaints",
                     complaintRepository.findByStudentIdOrderByCreatedAtDesc(current.getId()).stream()
                             .filter(c -> c.getStatus() != ComplaintStatus.RESOLVED)
@@ -73,34 +79,39 @@ public class DashboardService {
             return new DashboardStatsDto(stats);
         }
 
-        stats.put("totalRooms", roomRepository.countByActiveTrue());
-        stats.put("totalBeds", bedRepository.count());
-        stats.put("occupiedBeds", bedRepository.countByOccupiedTrue());
-        stats.put("vacantBeds", bedRepository.countByOccupiedFalse());
-        stats.put("activeAllocations", allocationRepository.countByActiveTrue());
-        stats.put("activeNotices", noticeRepository.countByStatus(com.takshak.hostel.enums.NoticeStatus.ACTIVE));
+        stats.put("totalRooms", roomRepository.countByBranchIdAndActiveTrue(branchId));
+        stats.put("totalBeds", bedRepository.count(branchId));
+        stats.put("occupiedBeds", bedRepository.countByOccupiedTrue(branchId));
+        stats.put("vacantBeds", bedRepository.countByOccupiedFalse(branchId));
+        stats.put("activeAllocations", allocationRepository.countByBranchIdAndActiveTrue(branchId));
+        stats.put("activeNotices", noticeRepository.countByBranchIdAndStatus(branchId, NoticeStatus.ACTIVE));
 
         if (current.getRole() == Role.SUPER_ADMIN || current.getRole() == Role.ADMIN) {
-            stats.put("students", userRepository.countByRoleAndActiveTrue(Role.STUDENT));
-            stats.put("wardens", userRepository.countByRoleAndActiveTrue(Role.WARDEN));
-            stats.put("admins", userRepository.countByRoleAndActiveTrue(Role.ADMIN));
-            stats.put("pendingAdmissions", admissionRequestRepository.countByStatus(AdmissionStatus.PENDING));
-            stats.put("openComplaints", complaintRepository.countByStatus(ComplaintStatus.OPEN));
-            stats.put("inProgressComplaints", complaintRepository.countByStatus(ComplaintStatus.IN_PROGRESS));
-            stats.put("resolvedComplaints", complaintRepository.countByStatus(ComplaintStatus.RESOLVED));
-            stats.put("admissionTrend", buildAdmissionTrend());
-            stats.put("floorOccupancy", buildFloorOccupancy());
+            stats.put("students", userRepository.countByRoleAndActiveTrueAndBranchId(Role.STUDENT, branchId));
+            stats.put("wardens", userRepository.countByRoleAndActiveTrueAndBranchId(Role.WARDEN, branchId));
+            stats.put("admins", userRepository.countByRoleAndActiveTrueAndBranchId(Role.ADMIN, branchId));
+            stats.put("pendingAdmissions",
+                    admissionRequestRepository.countByBranchIdAndStatus(branchId, AdmissionStatus.PENDING));
+            stats.put("openComplaints", complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.OPEN));
+            stats.put("inProgressComplaints",
+                    complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.IN_PROGRESS));
+            stats.put("resolvedComplaints",
+                    complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.RESOLVED));
+            stats.put("admissionTrend", buildAdmissionTrend(branchId));
+            stats.put("floorOccupancy", buildFloorOccupancy(branchId));
         } else if (current.getRole() == Role.WARDEN) {
-            stats.put("students", userRepository.countByRoleAndActiveTrue(Role.STUDENT));
-            stats.put("openComplaints", complaintRepository.countByStatus(ComplaintStatus.OPEN));
-            stats.put("inProgressComplaints", complaintRepository.countByStatus(ComplaintStatus.IN_PROGRESS));
-            stats.put("resolvedComplaints", complaintRepository.countByStatus(ComplaintStatus.RESOLVED));
+            stats.put("students", userRepository.countByRoleAndActiveTrueAndBranchId(Role.STUDENT, branchId));
+            stats.put("openComplaints", complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.OPEN));
+            stats.put("inProgressComplaints",
+                    complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.IN_PROGRESS));
+            stats.put("resolvedComplaints",
+                    complaintRepository.countByBranchIdAndStatus(branchId, ComplaintStatus.RESOLVED));
         }
 
         return new DashboardStatsDto(stats);
     }
 
-    private List<Map<String, Object>> buildAdmissionTrend() {
+    private List<Map<String, Object>> buildAdmissionTrend(String branchId) {
         Instant since = Instant.now().minus(180, ChronoUnit.DAYS);
         ZoneId zone = ZoneId.systemDefault();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM yy");
@@ -112,10 +123,11 @@ public class DashboardService {
             grouped.put(month, 0L);
         }
 
-        admissionRequestRepository.findByCreatedAtAfterOrderByCreatedAtAsc(since).forEach(request -> {
-            YearMonth month = YearMonth.from(request.getCreatedAt().atZone(zone));
-            grouped.merge(month, 1L, Long::sum);
-        });
+        admissionRequestRepository.findByBranchIdAndCreatedAtAfterOrderByCreatedAtAsc(branchId, since)
+                .forEach(request -> {
+                    YearMonth month = YearMonth.from(request.getCreatedAt().atZone(zone));
+                    grouped.merge(month, 1L, Long::sum);
+                });
 
         List<Map<String, Object>> trend = new ArrayList<>();
         grouped.forEach((month, count) -> {
@@ -127,9 +139,9 @@ public class DashboardService {
         return trend;
     }
 
-    private List<Map<String, Object>> buildFloorOccupancy() {
+    private List<Map<String, Object>> buildFloorOccupancy(String branchId) {
         List<Map<String, Object>> floors = new ArrayList<>();
-        for (Object[] row : bedRepository.countOccupancyByFloor()) {
+        for (Object[] row : bedRepository.countOccupancyByFloor(branchId)) {
             int floor = ((Number) row[0]).intValue();
             long total = ((Number) row[1]).longValue();
             long occupied = ((Number) row[2]).longValue();

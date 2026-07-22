@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { HostelConfigProvider } from './context/HostelConfigContext'
+import { BranchProvider } from './context/BranchContext'
 import './index.css'
 
 const storedTheme = localStorage.getItem('hms_theme')
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <HostelConfigProvider>
-        <App />
+        <BranchProvider>
+          <App />
+        </BranchProvider>
       </HostelConfigProvider>
     </BrowserRouter>
   </StrictMode>,

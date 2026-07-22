@@ -6,4 +6,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface CheckInOutRepository extends MongoRepository<CheckInOut, String> {
     List<CheckInOut> findAllByOrderByTimestampDesc();
+    List<CheckInOut> findByBranchIdOrderByTimestampDesc(String branchId);
 }

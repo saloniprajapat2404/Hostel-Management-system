@@ -1,9 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, UserRound } from 'lucide-react'
 import HostelLogo from '../HostelLogo'
 import DarkModeToggle from '../DarkModeToggle'
 import NotificationBell from '../notifications/NotificationBell'
+import BranchSelector from './BranchSelector'
+import { useBranch } from '../../context/BranchContext'
 import { useDarkMode } from '../../hooks/useDarkMode'
 import { useHostelConfig } from '../../context/HostelConfigContext'
 import { apiGet } from '../../utils/api'
@@ -40,7 +42,9 @@ const ADMIN_NAV = [
 ]
 
 const SUPER_ADMIN_NAV = [
-  { to: '/app', label: 'Dashboard', end: true },
+  { to: '/superadmin', label: 'All Branches', end: true },
+  { to: '/superadmin/branches', label: 'Manage Branches' },
+  { to: '/app', label: 'Branch Dashboard' },
   { to: '/app/add-user', label: 'Add User' },
   {
     label: 'Management',
@@ -119,7 +123,7 @@ const ROLE_NAV = {
 
 const ROLE_BADGE = {
   SUPER_ADMIN: 'Super Admin',
-  ADMIN: 'Admin',
+  ADMIN: 'Branch Admin',
   WARDEN: 'Warden',
   STUDENT: 'Student',
 }
@@ -218,6 +222,7 @@ function NavGroup({ group, pathname, search, onNavigate }) {
 
 export default function AppShell() {
   const [user, setUser] = useState(() => getSession())
+  const { currentBranch } = useBranch()
   const navigate = useNavigate()
   const location = useLocation()
   const { dark, toggle } = useDarkMode()
@@ -254,6 +259,10 @@ export default function AppShell() {
   const handleSignOut = () => {
     clearSession()
     navigate('/')
+  }
+
+  if (user?.role === 'SUPER_ADMIN' && !currentBranch) {
+    return <Navigate to="/superadmin" replace />
   }
 
   return (
@@ -346,6 +355,7 @@ export default function AppShell() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {user?.role === 'SUPER_ADMIN' && <BranchSelector />}
             {!isDashboard && <NotificationBell variant="shell" />}
             <DarkModeToggle dark={dark} onToggle={toggle} label="Dark mode" />
             <Link

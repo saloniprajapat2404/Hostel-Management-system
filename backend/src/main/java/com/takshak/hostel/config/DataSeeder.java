@@ -3,6 +3,7 @@ package com.takshak.hostel.config;
 import com.takshak.hostel.entity.AdmissionRequest;
 import com.takshak.hostel.entity.Allocation;
 import com.takshak.hostel.entity.Bed;
+import com.takshak.hostel.entity.Branch;
 import com.takshak.hostel.entity.Complaint;
 import com.takshak.hostel.entity.Expense;
 import com.takshak.hostel.entity.Notice;
@@ -11,6 +12,7 @@ import com.takshak.hostel.entity.StudentFee;
 import com.takshak.hostel.entity.SystemSetting;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.AdmissionStatus;
+import com.takshak.hostel.enums.BranchStatus;
 import com.takshak.hostel.enums.ComplaintStatus;
 import com.takshak.hostel.enums.FeeStatus;
 import com.takshak.hostel.enums.NoticeCategory;
@@ -21,9 +23,11 @@ import com.takshak.hostel.enums.PaymentMethod;
 import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.repository.AdmissionRequestRepository;
 import com.takshak.hostel.repository.AllocationRepository;
+import com.takshak.hostel.repository.BranchRepository;
 import com.takshak.hostel.repository.ComplaintRepository;
 import com.takshak.hostel.repository.ExpenseRepository;
 import com.takshak.hostel.repository.NoticeRepository;
+import com.takshak.hostel.repository.CheckInOutRepository;
 import com.takshak.hostel.repository.RoomRepository;
 import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.SystemSettingRepository;
@@ -50,6 +54,7 @@ public class DataSeeder implements CommandLineRunner {
     private static final String DEMO_PASSWORD = "demo123";
 
     private final UserRepository userRepository;
+    private final BranchRepository branchRepository;
     private final RoomRepository roomRepository;
     private final AllocationRepository allocationRepository;
     private final AdmissionRequestRepository admissionRequestRepository;
@@ -61,10 +66,12 @@ public class DataSeeder implements CommandLineRunner {
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final ExpenseRepository expenseRepository;
+    private final CheckInOutRepository checkInOutRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
             UserRepository userRepository,
+            BranchRepository branchRepository,
             RoomRepository roomRepository,
             AllocationRepository allocationRepository,
             AdmissionRequestRepository admissionRequestRepository,
@@ -76,8 +83,10 @@ public class DataSeeder implements CommandLineRunner {
             NotificationRepository notificationRepository,
             NotificationService notificationService,
             ExpenseRepository expenseRepository,
+            CheckInOutRepository checkInOutRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.branchRepository = branchRepository;
         this.roomRepository = roomRepository;
         this.allocationRepository = allocationRepository;
         this.admissionRequestRepository = admissionRequestRepository;
@@ -89,13 +98,19 @@ public class DataSeeder implements CommandLineRunner {
         this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
         this.expenseRepository = expenseRepository;
+        this.checkInOutRepository = checkInOutRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
+        ensureBranches();
+
         if (userRepository.count() > 0) {
-            log.info("Database already seeded — running fee/profile backfill");
+            log.info("Database already seeded — running branch/fee/profile backfill");
+            ensureBranches();
+            backfillBranchIds();
+            seedBranchAdmins(passwordEncoder.encode(DEMO_PASSWORD));
             ensureDefaultSettings();
             ensureNotifications();
             ensureStudentProfilesAndFees();
@@ -104,10 +119,15 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Seeding Takshak Hostel demo data...");
         String encoded = passwordEncoder.encode(DEMO_PASSWORD);
+        String vijayNagarId = branchRepository.findBySlug("vijay-nagar")
+                .orElseThrow()
+                .getId();
 
-        User superAdmin = saveUser("superadmin@takshak.edu", encoded, "Super Admin", Role.SUPER_ADMIN, null, "9000000001");
-        User admin = saveUser("admin@takshak.edu", encoded, "Hostel Admin", Role.ADMIN, null, "9000000002");
-        User warden = saveUser("warden@takshak.edu", encoded, "Hostel Warden", Role.WARDEN, null, "9000000003");
+        User superAdmin = saveUser("superadmin@takshak.edu", encoded, "Super Admin", Role.SUPER_ADMIN, null, "9000000001", null);
+        User admin = saveUser("admin@takshak.edu", encoded, "Hostel Admin", Role.ADMIN, null, "9000000002", vijayNagarId);
+        User warden = saveUser("warden@takshak.edu", encoded, "Hostel Warden", Role.WARDEN, null, "9000000003", vijayNagarId);
+
+        seedBranchAdmins(encoded);
 
         List<User> students = new ArrayList<>();
         for (int i = 1; i <= 20; i++) {
@@ -119,7 +139,8 @@ public class DataSeeder implements CommandLineRunner {
                     "Student " + num,
                     Role.STUDENT,
                     studentId,
-                    "98" + String.format("%08d", 10000000 + i)
+                    "98" + String.format("%08d", 10000000 + i),
+                    vijayNagarId
             );
             student.setWhatsappNumber("+9198" + String.format("%08d", 10000000 + i));
             student = userRepository.save(student);
@@ -143,6 +164,7 @@ public class DataSeeder implements CommandLineRunner {
             room.setFloor(((i - 1) % 5) + 1);
             room.setCapacity(2);
             room.setActive(true);
+            room.setBranchId(vijayNagarId);
 
             Bed bedA = newBed("A");
             Bed bedB = newBed("B");
@@ -175,6 +197,7 @@ public class DataSeeder implements CommandLineRunner {
             allocation.setActive(true);
             allocation.setAllocatedById(admin.getId());
             allocation.setAllocatedByName(admin.getFullName());
+            allocation.setBranchId(vijayNagarId);
             allocationRepository.save(allocation);
         }
 
@@ -185,6 +208,7 @@ public class DataSeeder implements CommandLineRunner {
         a1.setStudentId("STU2024101");
         a1.setStatus(AdmissionStatus.PENDING);
         a1.setNotes("First year CSE applicant");
+        a1.setBranchId(vijayNagarId);
         admissionRequestRepository.save(a1);
 
         AdmissionRequest a2 = new AdmissionRequest();
@@ -194,6 +218,7 @@ public class DataSeeder implements CommandLineRunner {
         a2.setStudentId("STU2024102");
         a2.setStatus(AdmissionStatus.PENDING);
         a2.setNotes("Prefers ground floor if possible");
+        a2.setBranchId(vijayNagarId);
         admissionRequestRepository.save(a2);
 
         Complaint c1 = new Complaint();
@@ -202,6 +227,7 @@ public class DataSeeder implements CommandLineRunner {
         c1.setTitle("Broken fan in room");
         c1.setDescription("Ceiling fan in R01 bed A is making noise and not spinning properly.");
         c1.setStatus(ComplaintStatus.OPEN);
+        c1.setBranchId(vijayNagarId);
         complaintRepository.save(c1);
 
         Complaint c2 = new Complaint();
@@ -210,6 +236,7 @@ public class DataSeeder implements CommandLineRunner {
         c2.setTitle("Wi-Fi connectivity issue");
         c2.setDescription("Hostel Wi-Fi drops frequently in the evening on floor 1.");
         c2.setStatus(ComplaintStatus.OPEN);
+        c2.setBranchId(vijayNagarId);
         complaintRepository.save(c2);
 
         systemSettingRepository.save(new SystemSetting("hostelName", "Takshak Hostel"));
@@ -217,11 +244,151 @@ public class DataSeeder implements CommandLineRunner {
         systemSettingRepository.save(new SystemSetting("totalRooms", "30"));
         systemSettingRepository.save(new SystemSetting("bedsPerRoom", "2"));
 
-        seedFeesForStudents(students);
+        seedFeesForStudents(students, vijayNagarId);
         ensureNotifications();
+        seedSampleRoomsForOtherBranches();
 
         log.info("Seed complete: users={}, rooms=30, allocations=15 (admin={}, superAdmin={})",
                 userRepository.count(), admin.getEmail(), superAdmin.getEmail());
+    }
+
+    private void ensureBranches() {
+        seedBranchIfMissing("Takshak Hostel - Vijay Nagar", "VJN", "vijay-nagar", "Vijay Nagar",
+                "12, Scheme 78, Vijay Nagar", "9001110001", "vijaynagar@takshak.edu");
+        seedBranchIfMissing("Takshak Hostel - MP Nagar", "MPN", "mp-nagar", "MP Nagar",
+                "45, Zone II, MP Nagar", "9001110002", "mpnagar@takshak.edu");
+        seedBranchIfMissing("Takshak Hostel - Indore", "IND", "indore", "Indore",
+                "88, AB Road, Indore", "9001110003", "indore@takshak.edu");
+        seedBranchIfMissing("Takshak Hostel - Bhopal", "BPL", "bhopal", "Bhopal",
+                "22, Arera Colony, Bhopal", "9001110004", "bhopal@takshak.edu");
+    }
+
+    private void seedBranchIfMissing(
+            String name, String code, String slug, String city,
+            String address, String phone, String email) {
+        if (branchRepository.findBySlug(slug).isPresent()) {
+            return;
+        }
+        Branch branch = new Branch();
+        branch.setName(name);
+        branch.setCode(code);
+        branch.setSlug(slug);
+        branch.setCity(city);
+        branch.setAddress(address);
+        branch.setPhone(phone);
+        branch.setEmail(email);
+        branch.setStatus(BranchStatus.ACTIVE);
+        branchRepository.save(branch);
+        log.info("Seeded branch: {}", name);
+    }
+
+    private void seedBranchAdmins(String encoded) {
+        seedBranchAdminIfMissing("mp-nagar", "admin.mp@takshak.edu", "MP Nagar Admin", "9000000010", encoded);
+        seedBranchAdminIfMissing("indore", "admin.indore@takshak.edu", "Indore Admin", "9000000011", encoded);
+        seedBranchAdminIfMissing("bhopal", "admin.bhopal@takshak.edu", "Bhopal Admin", "9000000012", encoded);
+    }
+
+    private void seedBranchAdminIfMissing(String slug, String email, String name, String phone, String encoded) {
+        if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
+            return;
+        }
+        branchRepository.findBySlug(slug).ifPresent(branch ->
+                saveUser(email, encoded, name, Role.ADMIN, null, phone, branch.getId()));
+    }
+
+    private void seedSampleRoomsForOtherBranches() {
+        branchRepository.findBySlug("mp-nagar").ifPresent(branch -> {
+            if (roomRepository.findByBranchIdOrderByRoomNumberAsc(branch.getId()).isEmpty()) {
+                for (int i = 1; i <= 5; i++) {
+                    Room room = new Room();
+                    room.setRoomNumber(String.format("MP%02d", i));
+                    room.setFloor(1);
+                    room.setCapacity(2);
+                    room.setActive(true);
+                    room.setBranchId(branch.getId());
+                    Bed bedA = newBed("A");
+                    Bed bedB = newBed("B");
+                    room.getBeds().add(bedA);
+                    room.getBeds().add(bedB);
+                    roomRepository.save(room);
+                }
+            }
+        });
+    }
+
+    private void backfillBranchIds() {
+        String defaultBranchId = branchRepository.findBySlug("vijay-nagar")
+                .map(Branch::getId)
+                .orElseGet(() -> branchRepository.findAllByOrderByNameAsc().stream()
+                        .findFirst()
+                        .map(Branch::getId)
+                        .orElse(null));
+        if (defaultBranchId == null) {
+            return;
+        }
+
+        userRepository.findAll().forEach(user -> {
+            if (user.getRole() != Role.SUPER_ADMIN && user.getBranchId() == null) {
+                user.setBranchId(defaultBranchId);
+                userRepository.save(user);
+            }
+        });
+
+        roomRepository.findAll().forEach(room -> {
+            if (room.getBranchId() == null) {
+                room.setBranchId(defaultBranchId);
+                roomRepository.save(room);
+            }
+        });
+
+        allocationRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                allocationRepository.save(item);
+            }
+        });
+
+        admissionRequestRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                admissionRequestRepository.save(item);
+            }
+        });
+
+        complaintRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                complaintRepository.save(item);
+            }
+        });
+
+        noticeRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                noticeRepository.save(item);
+            }
+        });
+
+        studentFeeRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                studentFeeRepository.save(item);
+            }
+        });
+
+        expenseRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                expenseRepository.save(item);
+            }
+        });
+
+        checkInOutRepository.findAll().forEach(item -> {
+            if (item.getBranchId() == null) {
+                item.setBranchId(defaultBranchId);
+                checkInOutRepository.save(item);
+            }
+        });
     }
 
     private void ensureDefaultSettings() {
@@ -276,6 +443,7 @@ public class DataSeeder implements CommandLineRunner {
         notice.setCreatedByName(creator.getFullName());
         notice.setStatus(NoticeStatus.ACTIVE);
         notice.setCreatedAt(Instant.now());
+        notice.setBranchId(creator.getBranchId());
         noticeRepository.save(notice);
 
         String message = title + " is now live";
@@ -312,6 +480,9 @@ public class DataSeeder implements CommandLineRunner {
             maintenance.setExpenseDate(LocalDate.now().minusDays(12));
             maintenance.setRecordedById(superAdmin.getId());
             maintenance.setRecordedByName(superAdmin.getFullName());
+            maintenance.setBranchId(superAdmin.getBranchId() != null
+                    ? superAdmin.getBranchId()
+                    : branchRepository.findBySlug("vijay-nagar").map(Branch::getId).orElse(null));
             expenseRepository.save(maintenance);
 
             Expense utilities = new Expense();
@@ -321,6 +492,7 @@ public class DataSeeder implements CommandLineRunner {
             utilities.setExpenseDate(LocalDate.now().minusDays(5));
             utilities.setRecordedById(superAdmin.getId());
             utilities.setRecordedByName(superAdmin.getFullName());
+            utilities.setBranchId(maintenance.getBranchId());
             expenseRepository.save(utilities);
         });
     }
@@ -373,27 +545,31 @@ public class DataSeeder implements CommandLineRunner {
         });
     }
 
-    private void seedFeesForStudents(List<User> students) {
-        students.forEach(this::seedFeesForStudent);
+    private void seedFeesForStudents(List<User> students, String branchId) {
+        students.forEach(student -> seedFeesForStudent(student, branchId));
     }
 
     private void seedFeesForStudent(User student) {
+        seedFeesForStudent(student, student.getBranchId());
+    }
+
+    private void seedFeesForStudent(User student, String branchId) {
         User admin = userRepository.findByEmailIgnoreCase("admin@takshak.edu").orElse(student);
 
         StudentFee hostel = saveFeeRecord(student, "Hostel Fee", "2025-26", new BigDecimal("45000"),
-                LocalDate.of(2026, 7, 31));
+                LocalDate.of(2026, 7, 31), branchId);
         studentFeeService.seedPayment(hostel, new BigDecimal("20000"), PaymentMethod.ONLINE,
                 "Online ref TXN-HOSTEL-001", admin);
         studentFeeService.seedPayment(hostel, new BigDecimal("10000"), PaymentMethod.ONLINE,
                 "Online gateway ORD-9920", admin);
 
         StudentFee mess = saveFeeRecord(student, "Mess Fee", "2025-26", new BigDecimal("18000"),
-                LocalDate.of(2026, 6, 30));
+                LocalDate.of(2026, 6, 30), branchId);
         studentFeeService.seedPayment(mess, new BigDecimal("18000"), PaymentMethod.CASH,
                 "Paid at accounts office", admin);
 
         StudentFee deposit = saveFeeRecord(student, "Security Deposit", "2025-26", new BigDecimal("5000"),
-                LocalDate.of(2025, 8, 15));
+                LocalDate.of(2025, 8, 15), branchId);
         studentFeeService.seedPayment(deposit, new BigDecimal("5000"), PaymentMethod.ONLINE,
                 "Online gateway ORD-9921", admin);
     }
@@ -403,7 +579,8 @@ public class DataSeeder implements CommandLineRunner {
             String feeType,
             String academicYear,
             BigDecimal total,
-            LocalDate dueDate) {
+            LocalDate dueDate,
+            String branchId) {
         StudentFee fee = new StudentFee();
         fee.setStudentId(student.getId());
         fee.setFeeType(feeType);
@@ -412,6 +589,7 @@ public class DataSeeder implements CommandLineRunner {
         fee.setPaidAmount(BigDecimal.ZERO);
         fee.setDueDate(dueDate);
         fee.setStatus(FeeStatus.PENDING);
+        fee.setBranchId(branchId);
         return studentFeeRepository.save(fee);
     }
 
@@ -429,7 +607,8 @@ public class DataSeeder implements CommandLineRunner {
             String fullName,
             Role role,
             String studentId,
-            String phone) {
+            String phone,
+            String branchId) {
         User user = new User();
         user.setEmail(email);
         user.setPassword(encodedPassword);
@@ -437,6 +616,7 @@ public class DataSeeder implements CommandLineRunner {
         user.setRole(role);
         user.setStudentId(studentId);
         user.setPhone(phone);
+        user.setBranchId(branchId);
         user.setActive(true);
         return userRepository.save(user);
     }

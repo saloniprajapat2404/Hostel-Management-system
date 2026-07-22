@@ -7,8 +7,9 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface NoticeRepository extends MongoRepository<Notice, String> {
     List<Notice> findByStatusOrderByCreatedAtDesc(NoticeStatus status);
-
+    List<Notice> findByBranchIdAndStatusOrderByCreatedAtDesc(String branchId, NoticeStatus status);
     List<Notice> findAllByOrderByCreatedAtDesc();
-
+    List<Notice> findByBranchIdOrderByCreatedAtDesc(String branchId);
     long countByStatus(NoticeStatus status);
+    long countByBranchIdAndStatus(String branchId, NoticeStatus status);
 }

@@ -37,9 +37,33 @@ public class BedRepository {
         return Optional.empty();
     }
 
+    public Optional<BedWithRoom> findByIdWithRoom(String bedId, String branchId) {
+        for (Room room : roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId)) {
+            for (Bed bed : room.getBeds()) {
+                if (bedId.equals(bed.getId())) {
+                    return Optional.of(new BedWithRoom(bed, room));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     public List<BedWithRoom> findAllWithRoom() {
         List<BedWithRoom> result = new ArrayList<>();
         for (Room room : roomRepository.findAllByOrderByRoomNumberAsc()) {
+            for (Bed bed : room.getBeds()) {
+                result.add(new BedWithRoom(bed, room));
+            }
+        }
+        result.sort(Comparator
+                .comparing((BedWithRoom b) -> b.room().getRoomNumber())
+                .thenComparing(b -> b.bed().getBedLabel()));
+        return result;
+    }
+
+    public List<BedWithRoom> findAllWithRoom(String branchId) {
+        List<BedWithRoom> result = new ArrayList<>();
+        for (Room room : roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId)) {
             for (Bed bed : room.getBeds()) {
                 result.add(new BedWithRoom(bed, room));
             }
@@ -67,8 +91,21 @@ public class BedRepository {
                 .sum();
     }
 
+    public long count(String branchId) {
+        return roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId).stream()
+                .mapToLong(r -> r.getBeds().size())
+                .sum();
+    }
+
     public long countByOccupiedTrue() {
         return roomRepository.findAll().stream()
+                .flatMap(r -> r.getBeds().stream())
+                .filter(Bed::isOccupied)
+                .count();
+    }
+
+    public long countByOccupiedTrue(String branchId) {
+        return roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId).stream()
                 .flatMap(r -> r.getBeds().stream())
                 .filter(Bed::isOccupied)
                 .count();
@@ -81,18 +118,40 @@ public class BedRepository {
                 .count();
     }
 
+    public long countByOccupiedFalse(String branchId) {
+        return roomRepository.findByBranchIdOrderByRoomNumberAsc(branchId).stream()
+                .flatMap(r -> r.getBeds().stream())
+                .filter(b -> !b.isOccupied() && !b.isUnderMaintenance())
+                .count();
+    }
+
     public List<Object[]> countOccupancyByFloor() {
         Map<Integer, long[]> grouped = new LinkedHashMap<>();
         for (Room room : roomRepository.findByActiveTrueOrderByRoomNumberAsc()) {
-            long[] counts = grouped.computeIfAbsent(room.getFloor(), floor -> new long[2]);
-            for (Bed bed : room.getBeds()) {
-                counts[0]++;
-                if (bed.isOccupied()) {
-                    counts[1]++;
-                }
+            accumulateFloor(grouped, room);
+        }
+        return toFloorRows(grouped);
+    }
+
+    public List<Object[]> countOccupancyByFloor(String branchId) {
+        Map<Integer, long[]> grouped = new LinkedHashMap<>();
+        for (Room room : roomRepository.findByBranchIdAndActiveTrueOrderByRoomNumberAsc(branchId)) {
+            accumulateFloor(grouped, room);
+        }
+        return toFloorRows(grouped);
+    }
+
+    private void accumulateFloor(Map<Integer, long[]> grouped, Room room) {
+        long[] counts = grouped.computeIfAbsent(room.getFloor(), floor -> new long[2]);
+        for (Bed bed : room.getBeds()) {
+            counts[0]++;
+            if (bed.isOccupied()) {
+                counts[1]++;
             }
         }
+    }
 
+    private List<Object[]> toFloorRows(Map<Integer, long[]> grouped) {
         List<Object[]> rows = new ArrayList<>();
         grouped.forEach((floor, counts) -> rows.add(new Object[] { floor, counts[0], counts[1] }));
         return rows;

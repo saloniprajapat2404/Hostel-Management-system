@@ -15,6 +15,7 @@ import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.StudentFeeRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -28,14 +29,17 @@ public class StudentFeeService {
     private final StudentFeeRepository studentFeeRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final BranchScope branchScope;
 
     public StudentFeeService(
             StudentFeeRepository studentFeeRepository,
             UserRepository userRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            BranchScope branchScope) {
         this.studentFeeRepository = studentFeeRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.branchScope = branchScope;
     }
 
     public List<StudentFeeDetailDto> myFees() {
@@ -50,7 +54,8 @@ public class StudentFeeService {
 
     public FeeOverviewDto overview() {
         assertAdminAccess();
-        List<User> students = userRepository.findByRole(Role.STUDENT).stream()
+        String branchId = branchScope.requireBranchId();
+        List<User> students = userRepository.findByRoleAndBranchId(Role.STUDENT, branchId).stream()
                 .filter(User::isActive)
                 .toList();
 
@@ -84,7 +89,8 @@ public class StudentFeeService {
 
     public List<StudentFeeSummaryDto> studentSummaries() {
         assertAdminAccess();
-        return userRepository.findByRole(Role.STUDENT).stream()
+        String branchId = branchScope.requireBranchId();
+        return userRepository.findByRoleAndBranchId(Role.STUDENT, branchId).stream()
                 .filter(User::isActive)
                 .sorted(Comparator.comparing(User::getFullName))
                 .map(this::buildSummary)
@@ -119,6 +125,7 @@ public class StudentFeeService {
         fee.setPaidAmount(BigDecimal.ZERO);
         fee.setDueDate(request.dueDate());
         fee.setStatus(FeeStatus.PENDING);
+        fee.setBranchId(student.getBranchId());
         return StudentFeeDetailDto.from(studentFeeRepository.save(fee));
     }
 
@@ -127,6 +134,7 @@ public class StudentFeeService {
         User actor = SecurityUtils.currentUser();
         StudentFee fee = studentFeeRepository.findById(feeId)
                 .orElseThrow(() -> new ApiException("Fee record not found", 404));
+        assertFeeBranch(fee);
 
         BigDecimal balance = fee.getTotalAmount().subtract(fee.getPaidAmount());
         if (request.amount().compareTo(balance) > 0) {
@@ -216,7 +224,18 @@ public class StudentFeeService {
         if (student.getRole() != Role.STUDENT) {
             throw new ApiException("User is not a student", 400);
         }
+        String branchId = branchScope.requireBranchId();
+        if (student.getBranchId() == null || !student.getBranchId().equals(branchId)) {
+            throw new ApiException("Student not found", 404);
+        }
         return student;
+    }
+
+    private void assertFeeBranch(StudentFee fee) {
+        String branchId = branchScope.requireBranchId();
+        if (fee.getBranchId() == null || !fee.getBranchId().equals(branchId)) {
+            throw new ApiException("Fee record not found", 404);
+        }
     }
 
     private void assertAdminAccess() {

@@ -31,6 +31,8 @@ public class AdmissionRequest {
 
     private Instant reviewedAt;
 
+    private String branchId;
+
     public AdmissionRequest() {
     }
 
@@ -120,5 +122,13 @@ public class AdmissionRequest {
 
     public void setReviewedAt(Instant reviewedAt) {
         this.reviewedAt = reviewedAt;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

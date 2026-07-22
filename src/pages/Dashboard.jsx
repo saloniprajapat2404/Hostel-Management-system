@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import {
   Bell,
   Building2,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { apiGet } from '../utils/api'
 import { getSession, refreshSessionUser } from '../utils/auth'
+import { useBranch } from '../context/BranchContext'
 import { buildRecentActivityFromData, buildStudentHistoryFromData } from '../utils/dashboardActivity'
 import DashboardStickyHeader from '../components/dashboard/enterprise/DashboardStickyHeader'
 import DashboardHero from '../components/dashboard/enterprise/DashboardHero'
@@ -58,8 +60,14 @@ function buildKpis(stats, role, studentFeeBalance, feesLoading) {
 }
 
 export default function Dashboard() {
+  const { currentBranch } = useBranch()
   const [user, setUser] = useState(() => getSession())
   const role = user?.role || getSession()?.role || 'STUDENT'
+
+  if (role === 'SUPER_ADMIN' && !currentBranch) {
+    return <Navigate to="/superadmin" replace />
+  }
+
   const quickAccessRole = getSession()?.role || role
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const isStudent = role === 'STUDENT'

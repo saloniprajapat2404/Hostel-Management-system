@@ -20,7 +20,8 @@ public record UserDto(
         String state,
         String pincode,
         boolean active,
-        Instant createdAt
+        Instant createdAt,
+        String branchId
 ) {
     public static UserDto from(User user) {
         return new UserDto(
@@ -39,7 +40,8 @@ public record UserDto(
                 user.getState(),
                 user.getPincode(),
                 user.isActive(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getBranchId()
         );
     }
 

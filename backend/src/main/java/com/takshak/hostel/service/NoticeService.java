@@ -19,6 +19,7 @@ import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.NoticeReadRepository;
 import com.takshak.hostel.repository.NoticeRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,6 +40,7 @@ public class NoticeService {
     private final UserRepository userRepository;
     private final AllocationRepository allocationRepository;
     private final WhatsAppService whatsAppService;
+    private final BranchScope branchScope;
 
     public NoticeService(
             NoticeRepository noticeRepository,
@@ -46,13 +48,15 @@ public class NoticeService {
             NotificationService notificationService,
             UserRepository userRepository,
             AllocationRepository allocationRepository,
-            WhatsAppService whatsAppService) {
+            WhatsAppService whatsAppService,
+            BranchScope branchScope) {
         this.noticeRepository = noticeRepository;
         this.noticeReadRepository = noticeReadRepository;
         this.notificationService = notificationService;
         this.userRepository = userRepository;
         this.allocationRepository = allocationRepository;
         this.whatsAppService = whatsAppService;
+        this.branchScope = branchScope;
     }
 
     public List<NoticeDto> list(NoticeCategory category, NoticeStatus status, LocalDate from, LocalDate to) {
@@ -92,10 +96,10 @@ public class NoticeService {
                 .toList();
 
         long total = isStaff(current)
-                ? noticeRepository.count()
+                ? noticeRepository.findByBranchIdOrderByCreatedAtDesc(branchScope.requireBranchId()).size()
                 : visible.size();
         long active = isStaff(current)
-                ? noticeRepository.countByStatus(NoticeStatus.ACTIVE)
+                ? noticeRepository.countByBranchIdAndStatus(branchScope.requireBranchId(), NoticeStatus.ACTIVE)
                 : visible.size();
 
         return new NoticeDashboardSummaryDto(total, active, unread, latest);
@@ -112,6 +116,7 @@ public class NoticeService {
         notice.setCreatedById(actor.getId());
         notice.setCreatedByName(actor.getFullName());
         notice.setStatus(NoticeStatus.ACTIVE);
+        notice.setBranchId(branchScope.requireBranchId());
         Notice saved = noticeRepository.save(notice);
 
         notifyTargetedUsers(saved, actor);
@@ -130,6 +135,7 @@ public class NoticeService {
         User actor = SecurityUtils.currentUser();
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Notice not found", 404));
+        assertBranchAccess(notice);
         validateTargeting(request.targetAudience(), request.roomNumber(), request.studentId());
 
         applyFields(notice, request.title(), request.description(), request.category(),
@@ -145,6 +151,7 @@ public class NoticeService {
         User actor = SecurityUtils.currentUser();
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Notice not found", 404));
+        assertBranchAccess(notice);
         notice.setStatus(NoticeStatus.EXPIRED);
         return toDto(noticeRepository.save(notice), actor);
     }
@@ -153,6 +160,7 @@ public class NoticeService {
         assertCanManage();
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Notice not found", 404));
+        assertBranchAccess(notice);
         noticeRepository.delete(notice);
     }
 
@@ -190,9 +198,10 @@ public class NoticeService {
 
     private List<Notice> loadNoticesForRole(User current) {
         if (isStaff(current)) {
-            return noticeRepository.findAllByOrderByCreatedAtDesc();
+            return noticeRepository.findByBranchIdOrderByCreatedAtDesc(branchScope.requireBranchId());
         }
-        return noticeRepository.findByStatusOrderByCreatedAtDesc(NoticeStatus.ACTIVE).stream()
+        String branchId = current.getBranchId();
+        return noticeRepository.findByBranchIdAndStatusOrderByCreatedAtDesc(branchId, NoticeStatus.ACTIVE).stream()
                 .filter(notice -> isNoticeVisibleToStudent(notice, current))
                 .toList();
     }
@@ -222,7 +231,8 @@ public class NoticeService {
     }
 
     private List<User> resolveTargetStudents(Notice notice) {
-        List<User> students = userRepository.findByRole(Role.STUDENT).stream()
+        String branchId = notice.getBranchId();
+        List<User> students = userRepository.findByRoleAndBranchId(Role.STUDENT, branchId).stream()
                 .filter(User::isActive)
                 .toList();
 
@@ -323,6 +333,7 @@ public class NoticeService {
 
     private void assertCanView(User viewer, Notice notice) {
         if (isStaff(viewer)) {
+            assertBranchAccess(notice);
             return;
         }
         if (viewer.getRole() == Role.STUDENT && notice.getStatus() == NoticeStatus.ACTIVE
@@ -343,5 +354,12 @@ public class NoticeService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void assertBranchAccess(Notice notice) {
+        String branchId = branchScope.requireBranchId();
+        if (notice.getBranchId() == null || !notice.getBranchId().equals(branchId)) {
+            throw new ApiException("Notice not found", 404);
+        }
     }
 }

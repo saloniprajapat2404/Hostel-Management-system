@@ -28,6 +28,8 @@ public class Allocation {
     private String allocatedById;
     private String allocatedByName;
 
+    private String branchId;
+
     public Allocation() {
     }
 
@@ -141,5 +143,13 @@ public class Allocation {
 
     public void setAllocatedByName(String allocatedByName) {
         this.allocatedByName = allocatedByName;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

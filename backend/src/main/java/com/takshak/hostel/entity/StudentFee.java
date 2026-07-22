@@ -30,6 +30,8 @@ public class StudentFee {
 
     private List<FeePayment> payments = new ArrayList<>();
 
+    private String branchId;
+
     public String getId() {
         return id;
     }
@@ -100,5 +102,13 @@ public class StudentFee {
 
     public void setPayments(List<FeePayment> payments) {
         this.payments = payments;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

@@ -12,7 +12,7 @@ public class User {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed
     private String email;
 
     private String password;
@@ -21,8 +21,11 @@ public class User {
 
     private Role role;
 
-    @Indexed(unique = true, sparse = true)
+    @Indexed(sparse = true)
     private String studentId;
+
+    /** Null for SUPER_ADMIN; required for all other roles. */
+    private String branchId;
 
     private String phone;
 
@@ -184,5 +187,13 @@ public class User {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

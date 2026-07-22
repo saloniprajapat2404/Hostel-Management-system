@@ -10,6 +10,7 @@ import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import com.takshak.hostel.util.PhoneUtils;
 import java.util.List;
@@ -23,39 +24,51 @@ public class UserService {
     private final AllocationRepository allocationRepository;
     private final BedRepository bedRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BranchScope branchScope;
 
     public UserService(
             UserRepository userRepository,
             AllocationRepository allocationRepository,
             BedRepository bedRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            BranchScope branchScope) {
         this.userRepository = userRepository;
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.passwordEncoder = passwordEncoder;
+        this.branchScope = branchScope;
     }
 
     public List<UserDto> listUsers(Role roleFilter) {
         User current = SecurityUtils.currentUser();
+        String branchId = branchScope.requireBranchId();
         List<User> users;
 
         if (current.getRole() == Role.SUPER_ADMIN) {
-            users = roleFilter != null ? userRepository.findByRole(roleFilter) : userRepository.findAll();
+            if (roleFilter != null) {
+                users = userRepository.findByRoleAndBranchId(roleFilter, branchId);
+                if (roleFilter == Role.SUPER_ADMIN) {
+                    users = userRepository.findByRole(Role.SUPER_ADMIN);
+                }
+            } else {
+                users = userRepository.findByBranchId(branchId);
+                users.addAll(userRepository.findByRole(Role.SUPER_ADMIN));
+            }
         } else if (current.getRole() == Role.ADMIN) {
             List<Role> allowed = List.of(Role.ADMIN, Role.WARDEN, Role.STUDENT);
             if (roleFilter != null) {
                 if (!allowed.contains(roleFilter)) {
                     throw new ApiException("Admin can only list ADMIN, WARDEN or STUDENT", 403);
                 }
-                users = userRepository.findByRole(roleFilter);
+                users = userRepository.findByRoleAndBranchId(roleFilter, branchId);
             } else {
-                users = userRepository.findByRoleIn(allowed);
+                users = userRepository.findByRoleInAndBranchId(allowed, branchId);
             }
         } else if (current.getRole() == Role.WARDEN) {
             if (roleFilter != null && roleFilter != Role.STUDENT) {
                 throw new ApiException("Warden can only list STUDENT users", 403);
             }
-            users = userRepository.findByRole(Role.STUDENT);
+            users = userRepository.findByRoleAndBranchId(Role.STUDENT, branchId);
         } else {
             throw new ApiException("Access denied", 403);
         }
@@ -81,11 +94,23 @@ public class UserService {
         }
 
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
-            throw new ApiException("Email already exists", 409);
+            User existing = userRepository.findByEmailIgnoreCase(request.email()).orElseThrow();
+            if (targetRole == Role.SUPER_ADMIN || existing.getRole() == Role.SUPER_ADMIN) {
+                throw new ApiException("Email already exists", 409);
+            }
         }
-        if (request.studentId() != null && !request.studentId().isBlank()
-                && userRepository.existsByStudentIdIgnoreCase(request.studentId())) {
-            throw new ApiException("Student ID already exists", 409);
+        String branchId = targetRole == Role.SUPER_ADMIN ? null : branchScope.requireBranchId();
+        if (branchId != null && userRepository.existsByEmailIgnoreCaseAndBranchId(request.email(), branchId)) {
+            throw new ApiException("Email already exists in this branch", 409);
+        }
+        if (request.studentId() != null && !request.studentId().isBlank()) {
+            if (userRepository.existsByStudentIdIgnoreCase(request.studentId())) {
+                throw new ApiException("Student ID already exists", 409);
+            }
+            if (branchId != null
+                    && userRepository.existsByStudentIdIgnoreCaseAndBranchId(request.studentId(), branchId)) {
+                throw new ApiException("Student ID already exists in this branch", 409);
+            }
         }
 
         User user = new User();
@@ -104,6 +129,7 @@ public class UserService {
             throw new ApiException("Only Super Admin or Admin can create inactive users", 403);
         }
         user.setActive(active);
+        user.setBranchId(branchId);
         return UserDto.from(userRepository.save(user));
     }
 
@@ -113,14 +139,24 @@ public class UserService {
                 .orElseThrow(() -> new ApiException("User not found", 404));
 
         assertCanManage(current, user);
+        assertSameBranch(current, user);
 
         if (request.email() != null && !request.email().isBlank()) {
-            userRepository.findByEmailIgnoreCase(request.email())
+            String email = request.email().trim().toLowerCase();
+            userRepository.findByEmailIgnoreCase(email)
                     .filter(u -> !u.getId().equals(id))
                     .ifPresent(u -> {
                         throw new ApiException("Email already exists", 409);
                     });
-            user.setEmail(request.email().trim().toLowerCase());
+            if (user.getBranchId() != null
+                    && userRepository.existsByEmailIgnoreCaseAndBranchId(email, user.getBranchId())) {
+                userRepository.findByEmailIgnoreCaseAndBranchId(email, user.getBranchId())
+                        .filter(u -> !u.getId().equals(id))
+                        .ifPresent(u -> {
+                            throw new ApiException("Email already exists in this branch", 409);
+                        });
+            }
+            user.setEmail(email);
         }
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.password()));
@@ -136,6 +172,13 @@ public class UserService {
                         .ifPresent(u -> {
                             throw new ApiException("Student ID already exists", 409);
                         });
+                if (user.getBranchId() != null) {
+                    userRepository.findByStudentIdIgnoreCaseAndBranchId(sid, user.getBranchId())
+                            .filter(u -> !u.getId().equals(id))
+                            .ifPresent(u -> {
+                                throw new ApiException("Student ID already exists in this branch", 409);
+                            });
+                }
             }
             user.setStudentId(sid);
         }
@@ -175,6 +218,7 @@ public class UserService {
             throw new ApiException("You cannot delete your own account", 400);
         }
         assertCanManage(current, user);
+        assertSameBranch(current, user);
         releaseActiveAllocation(user);
         user.setActive(false);
         userRepository.save(user);
@@ -218,7 +262,23 @@ public class UserService {
         if (!student.isActive()) {
             throw new ApiException("Student is inactive", 400);
         }
+        User current = SecurityUtils.currentUser();
+        if (current.getRole() != Role.SUPER_ADMIN
+                && student.getBranchId() != null
+                && !student.getBranchId().equals(branchScope.requireBranchId())) {
+            throw new ApiException("Student not found", 404);
+        }
         return student;
+    }
+
+    private void assertSameBranch(User actor, User target) {
+        if (actor.getRole() == Role.SUPER_ADMIN || target.getRole() == Role.SUPER_ADMIN) {
+            return;
+        }
+        String branchId = branchScope.requireBranchId();
+        if (target.getBranchId() == null || !target.getBranchId().equals(branchId)) {
+            throw new ApiException("Access denied", 403);
+        }
     }
 
     private void assertCanManage(User actor, User target) {

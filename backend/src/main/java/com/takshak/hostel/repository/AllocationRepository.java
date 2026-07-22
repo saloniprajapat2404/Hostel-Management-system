@@ -7,10 +7,14 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface AllocationRepository extends MongoRepository<Allocation, String> {
     List<Allocation> findByActiveTrue();
+    List<Allocation> findByBranchIdAndActiveTrue(String branchId);
     Optional<Allocation> findByStudentIdAndActiveTrue(String studentId);
     Optional<Allocation> findByBedIdAndActiveTrue(String bedId);
     boolean existsByStudentIdAndActiveTrue(String studentId);
     List<Allocation> findByActiveTrueOrderByAllocatedAtDesc();
+    List<Allocation> findByBranchIdAndActiveTrueOrderByAllocatedAtDesc(String branchId);
     long countByActiveTrue();
+    long countByBranchIdAndActiveTrue(String branchId);
     List<Allocation> findByRoomNumberIgnoreCaseAndActiveTrue(String roomNumber);
+    List<Allocation> findByBranchIdAndRoomNumberIgnoreCaseAndActiveTrue(String branchId, String roomNumber);
 }

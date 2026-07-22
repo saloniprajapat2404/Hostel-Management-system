@@ -11,6 +11,7 @@ import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.ComplaintRepository;
 import com.takshak.hostel.repository.UserRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import java.time.Instant;
 import java.util.List;
@@ -22,14 +23,17 @@ public class ComplaintService {
     private final ComplaintRepository complaintRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final BranchScope branchScope;
 
     public ComplaintService(
             ComplaintRepository complaintRepository,
             NotificationService notificationService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            BranchScope branchScope) {
         this.complaintRepository = complaintRepository;
         this.notificationService = notificationService;
         this.userRepository = userRepository;
+        this.branchScope = branchScope;
     }
 
     public List<ComplaintDto> list() {
@@ -39,7 +43,8 @@ public class ComplaintService {
                     .map(this::toDto)
                     .toList();
         }
-        return complaintRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
+        String branchId = branchScope.requireBranchId();
+        return complaintRepository.findByBranchIdOrderByCreatedAtDesc(branchId).stream().map(this::toDto).toList();
     }
 
     public ComplaintDto create(CreateComplaintRequest request) {
@@ -53,6 +58,7 @@ public class ComplaintService {
         complaint.setTitle(request.title().trim());
         complaint.setDescription(request.description().trim());
         complaint.setStatus(ComplaintStatus.OPEN);
+        complaint.setBranchId(student.getBranchId());
         Complaint saved = complaintRepository.save(complaint);
         notificationService.notifyRoles(
                 List.of(Role.SUPER_ADMIN, Role.ADMIN, Role.WARDEN),
@@ -64,8 +70,12 @@ public class ComplaintService {
     }
 
     public ComplaintDto updateStatus(String id, UpdateComplaintStatusRequest request) {
+        String branchId = branchScope.requireBranchId();
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Complaint not found", 404));
+        if (complaint.getBranchId() == null || !complaint.getBranchId().equals(branchId)) {
+            throw new ApiException("Complaint not found", 404);
+        }
         User handler = SecurityUtils.currentUser();
         complaint.setStatus(request.status());
         complaint.setHandledById(handler.getId());

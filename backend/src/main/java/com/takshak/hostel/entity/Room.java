@@ -15,8 +15,10 @@ public class Room {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed
     private String roomNumber;
+
+    private String branchId;
 
     private int floor;
 
@@ -126,5 +128,13 @@ public class Room {
 
     public void setBeds(List<Bed> beds) {
         this.beds = beds;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

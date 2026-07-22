@@ -9,6 +9,7 @@ import com.takshak.hostel.enums.Role;
 import com.takshak.hostel.exception.ApiException;
 import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.BedRepository;
+import com.takshak.hostel.security.BranchScope;
 import com.takshak.hostel.security.SecurityUtils;
 import com.takshak.hostel.service.NotificationService;
 import java.time.Instant;
@@ -22,20 +23,24 @@ public class AllocationService {
     private final BedRepository bedRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final BranchScope branchScope;
 
     public AllocationService(
             AllocationRepository allocationRepository,
             BedRepository bedRepository,
             UserService userService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            BranchScope branchScope) {
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.branchScope = branchScope;
     }
 
     public List<AllocationDto> listAllocations() {
-        return allocationRepository.findByActiveTrueOrderByAllocatedAtDesc().stream()
+        String branchId = branchScope.requireBranchId();
+        return allocationRepository.findByBranchIdAndActiveTrueOrderByAllocatedAtDesc(branchId).stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -52,8 +57,9 @@ public class AllocationService {
 
     public AllocationDto allocate(CreateAllocationRequest request) {
         User actor = SecurityUtils.currentUser();
+        String branchId = branchScope.requireBranchId();
         User student = userService.requireStudent(request.studentId());
-        BedRepository.BedWithRoom bedWithRoom = bedRepository.findByIdWithRoom(request.bedId())
+        BedRepository.BedWithRoom bedWithRoom = bedRepository.findByIdWithRoom(request.bedId(), branchId)
                 .orElseThrow(() -> new ApiException("Bed not found", 404));
 
         if (!bedWithRoom.room().isActive()) {
@@ -89,6 +95,7 @@ public class AllocationService {
         allocation.setActive(true);
         allocation.setAllocatedById(actor.getId());
         allocation.setAllocatedByName(actor.getFullName());
+        allocation.setBranchId(branchId);
         Allocation saved = allocationRepository.save(allocation);
         notificationService.notifyUser(
                 student,
@@ -100,8 +107,12 @@ public class AllocationService {
     }
 
     public void deallocate(String id) {
+        String branchId = branchScope.requireBranchId();
         Allocation allocation = allocationRepository.findById(id)
                 .orElseThrow(() -> new ApiException("Allocation not found", 404));
+        if (allocation.getBranchId() == null || !allocation.getBranchId().equals(branchId)) {
+            throw new ApiException("Allocation not found", 404);
+        }
         if (!allocation.isActive()) {
             throw new ApiException("Allocation already inactive", 400);
         }

@@ -13,8 +13,8 @@ import {
 const ACTIONS = {
   rooms: {
     label: 'Rooms',
-    hint: 'View occupancy and room status',
-    to: '/app/occupancy',
+    hint: 'Manage rooms, beds, wings, and maintenance',
+    to: '/app/rooms',
     icon: Building2,
     roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN'],
   },

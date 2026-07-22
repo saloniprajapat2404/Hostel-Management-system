@@ -29,6 +29,8 @@ public class Complaint {
 
     private String handledByName;
 
+    private String branchId;
+
     public Complaint() {
     }
 
@@ -110,5 +112,13 @@ public class Complaint {
 
     public void setHandledByName(String handledByName) {
         this.handledByName = handledByName;
+    }
+
+    public String getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(String branchId) {
+        this.branchId = branchId;
     }
 }

@@ -9,7 +9,7 @@ import Toast from '../components/ui/Toast'
 import { useHostelConfig } from '../context/HostelConfigContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useToast } from '../hooks/useToast'
-import { isAuthenticated } from '../utils/auth'
+import { isAuthenticated, getSession } from '../utils/auth'
 import { t } from '../utils/translations'
 
 export default function Login() {
@@ -23,7 +23,9 @@ export default function Login() {
   }, [refreshConfig])
 
   if (isAuthenticated()) {
-    return <Navigate to="/app" replace />
+    const user = getSession()
+    const target = user?.role === 'SUPER_ADMIN' ? '/superadmin' : '/app'
+    return <Navigate to={target} replace />
   }
 
   const handleLangChange = (value) => {

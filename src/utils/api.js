@@ -1,4 +1,5 @@
 import { clearSession, getToken } from './auth'
+import { getSelectedBranchId } from '../context/BranchContext'
 import { apiUrl } from './apiBase'
 
 async function parseError(res) {
@@ -14,6 +15,8 @@ async function request(method, path, body) {
   const token = getToken()
   const headers = {}
   if (token) headers.Authorization = `Bearer ${token}`
+  const branchId = getSelectedBranchId()
+  if (branchId) headers['X-Branch-Id'] = branchId
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
   let res
