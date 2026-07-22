@@ -3,6 +3,8 @@ package com.takshak.hostel.dto;
 import com.takshak.hostel.entity.User;
 import com.takshak.hostel.enums.Role;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Map;
 
 public record UserDto(
         String id,
@@ -21,7 +23,9 @@ public record UserDto(
         String pincode,
         boolean active,
         Instant createdAt,
-        String branchId
+        String branchId,
+        Map<String, Boolean> screenPermissions,
+        boolean accessGrant
 ) {
     public static UserDto from(User user) {
         return new UserDto(
@@ -41,8 +45,11 @@ public record UserDto(
                 user.getPincode(),
                 user.isActive(),
                 user.getCreatedAt(),
-                user.getBranchId()
-        );
+                user.getBranchId(),
+                user.getScreenPermissions() != null
+                        ? Collections.unmodifiableMap(user.getScreenPermissions())
+                        : Map.of(),
+                user.isAccessGrant());
     }
 
     public static UserDto summary(User user) {

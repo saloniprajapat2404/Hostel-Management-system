@@ -10,6 +10,7 @@ import { useHostelConfig } from '../context/HostelConfigContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useToast } from '../hooks/useToast'
 import { isAuthenticated, getSession } from '../utils/auth'
+import { firstAllowedAppPath } from '../constants/screenPermissions'
 import { t } from '../utils/translations'
 
 export default function Login() {
@@ -24,7 +25,7 @@ export default function Login() {
 
   if (isAuthenticated()) {
     const user = getSession()
-    const target = user?.role === 'SUPER_ADMIN' ? '/superadmin' : '/app'
+    const target = user?.role === 'SUPER_ADMIN' ? '/superadmin' : firstAllowedAppPath(user)
     return <Navigate to={target} replace />
   }
 

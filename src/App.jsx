@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 import AppShell from './components/layout/AppShell'
 
+import ScreenAccessGuard from './components/layout/ScreenAccessGuard'
+
 import Login from './pages/Login'
 
 import Dashboard from './pages/Dashboard'
@@ -78,6 +80,8 @@ function App() {
 
         <Route path="/app" element={<AppShell />}>
 
+          <Route element={<ScreenAccessGuard />}>
+
           <Route index element={<Dashboard />} />
 
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN']} />}>
@@ -129,6 +133,8 @@ function App() {
           <Route path="my-fees" element={<MyFeesPage />} />
 
           <Route path="profile" element={<ProfilePage />} />
+
+          </Route>
 
         </Route>
 

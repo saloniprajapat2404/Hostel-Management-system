@@ -461,6 +461,14 @@
   animation: fade-in-up 0.35s ease-out forwards;
 }
 
+.add-user-screen-permissions .screen-perm-block {
+  @apply motion-safe:transition-all motion-safe:duration-200;
+}
+
+.add-user-screen-permissions .screen-perm-block:focus-within {
+  @apply border-primary/30 ring-2 ring-primary/10 dark:border-primary-light/30 dark:ring-primary-light/10;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-fade-in-up,

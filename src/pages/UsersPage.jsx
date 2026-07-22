@@ -4,6 +4,12 @@ import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
 import { validateContactProfileFields } from '../utils/profileFieldHelpers'
+import {
+  accessGrantFromUser,
+  createDefaultScreenPermissions,
+  permissionsFromUser,
+} from '../constants/screenPermissions'
+import ScreenPermissionsSection from '../components/users/ScreenPermissionsSection'
 import { matchesSearch, sortRows, toggleSort } from '../utils/tableHelpers'
 import {
   ActionButton,
@@ -77,6 +83,8 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [sortKey, setSortKey] = useState('fullName')
   const [sortDir, setSortDir] = useState('asc')
+  const [screenPermissions, setScreenPermissions] = useState(createDefaultScreenPermissions)
+  const [accessGrant, setAccessGrant] = useState(true)
 
   const title = ROLE_TITLES[role] || 'Users'
 
@@ -98,6 +106,8 @@ export default function UsersPage() {
     setShowForm(false)
     setEditingId(null)
     setForm(emptyForm)
+    setScreenPermissions(createDefaultScreenPermissions())
+    setAccessGrant(true)
   }, [load])
 
   const formTitle = useMemo(
@@ -157,6 +167,8 @@ export default function UsersPage() {
   const openCreate = () => {
     setEditingId(null)
     setForm({ ...emptyForm })
+    setScreenPermissions(createDefaultScreenPermissions())
+    setAccessGrant(true)
     setShowForm(true)
   }
 
@@ -178,6 +190,8 @@ export default function UsersPage() {
       pincode: user.pincode || '',
       active: user.active !== false,
     })
+    setScreenPermissions(permissionsFromUser(user))
+    setAccessGrant(accessGrantFromUser(user))
     setShowForm(true)
   }
 
@@ -208,6 +222,8 @@ export default function UsersPage() {
           phone: normalizeMobile10(form.phone) || null,
           active: form.active,
           ...profileFields(form),
+          screenPermissions,
+          accessGrant,
         }
         if (form.password) body.password = form.password
         await apiPut(`/api/users/${editingId}`, body)
@@ -220,12 +236,16 @@ export default function UsersPage() {
           studentId: role === 'STUDENT' ? form.studentId || null : null,
           phone: normalizeMobile10(form.phone) || null,
           ...profileFields(form),
+          screenPermissions,
+          accessGrant,
         }
         await apiPost('/api/users', body)
       }
       setShowForm(false)
       setEditingId(null)
       setForm(emptyForm)
+      setScreenPermissions(createDefaultScreenPermissions())
+      setAccessGrant(true)
       await load()
     } catch (err) {
       setError(err.message || 'Save failed')
@@ -355,6 +375,16 @@ export default function UsersPage() {
                 </select>
               </Field>
             )}
+            <div className="sm:col-span-2">
+              <ScreenPermissionsSection
+                permissions={screenPermissions}
+                accessGrant={accessGrant}
+                onPermissionChange={(key, enabled) =>
+                  setScreenPermissions((prev) => ({ ...prev, [key]: enabled }))
+                }
+                onAccessGrantChange={setAccessGrant}
+              />
+            </div>
             <div className="flex gap-2 sm:col-span-2">
               <ActionButton type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</ActionButton>
               <ActionButton variant="ghost" onClick={() => setShowForm(false)}>Cancel</ActionButton>

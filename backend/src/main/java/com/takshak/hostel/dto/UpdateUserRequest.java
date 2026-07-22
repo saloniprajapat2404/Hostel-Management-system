@@ -1,6 +1,7 @@
 package com.takshak.hostel.dto;
 
 import jakarta.validation.constraints.Pattern;
+import java.util.Map;
 
 public record UpdateUserRequest(
         String email,
@@ -15,6 +16,8 @@ public record UpdateUserRequest(
         String city,
         String state,
         String pincode,
-        Boolean active
+        Boolean active,
+        Map<String, Boolean> screenPermissions,
+        Boolean accessGrant
 ) {
 }

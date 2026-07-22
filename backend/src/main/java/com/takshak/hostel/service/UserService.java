@@ -11,6 +11,7 @@ import com.takshak.hostel.repository.AllocationRepository;
 import com.takshak.hostel.repository.BedRepository;
 import com.takshak.hostel.repository.UserRepository;
 import com.takshak.hostel.security.BranchScope;
+import com.takshak.hostel.security.ScreenPermissionService;
 import com.takshak.hostel.security.SecurityUtils;
 import com.takshak.hostel.util.PhoneUtils;
 import java.util.List;
@@ -25,18 +26,21 @@ public class UserService {
     private final BedRepository bedRepository;
     private final PasswordEncoder passwordEncoder;
     private final BranchScope branchScope;
+    private final ScreenPermissionService screenPermissionService;
 
     public UserService(
             UserRepository userRepository,
             AllocationRepository allocationRepository,
             BedRepository bedRepository,
             PasswordEncoder passwordEncoder,
-            BranchScope branchScope) {
+            BranchScope branchScope,
+            ScreenPermissionService screenPermissionService) {
         this.userRepository = userRepository;
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.passwordEncoder = passwordEncoder;
         this.branchScope = branchScope;
+        this.screenPermissionService = screenPermissionService;
     }
 
     public List<UserDto> listUsers(Role roleFilter) {
@@ -130,6 +134,11 @@ public class UserService {
         }
         user.setActive(active);
         user.setBranchId(branchId);
+        user.setScreenPermissions(
+                request.screenPermissions() != null && !request.screenPermissions().isEmpty()
+                        ? screenPermissionService.mergeWithDefaults(request.screenPermissions())
+                        : screenPermissionService.defaultPermissions());
+        user.setAccessGrant(!Boolean.FALSE.equals(request.accessGrant()));
         return UserDto.from(userRepository.save(user));
     }
 
@@ -206,6 +215,15 @@ public class UserService {
                 throw new ApiException("Only Super Admin or Admin can change account status", 403);
             }
             user.setActive(request.active());
+        }
+        if (request.screenPermissions() != null) {
+            user.setScreenPermissions(
+                    request.screenPermissions().isEmpty()
+                            ? screenPermissionService.defaultPermissions()
+                            : screenPermissionService.mergeWithDefaults(request.screenPermissions()));
+        }
+        if (request.accessGrant() != null) {
+            user.setAccessGrant(request.accessGrant());
         }
         return UserDto.from(userRepository.save(user));
     }

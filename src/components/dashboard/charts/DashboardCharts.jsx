@@ -4,8 +4,11 @@ import OccupancyDonut from './OccupancyDonut'
 import StudentFeeDonut from './StudentFeeDonut'
 import UserCountsBarChart from './UserCountsBarChart'
 
+import { canAccessPath } from '../../../constants/screenPermissions'
+
 export default function DashboardCharts({
   role,
+  user,
   stats,
   feeOverview,
   studentFees,
@@ -18,6 +21,10 @@ export default function DashboardCharts({
   const isStudent = role === 'STUDENT'
 
   if (isStudent) {
+    if (!canAccessPath(user, '/app/my-fees')) {
+      return null
+    }
+
     const paid = studentFees?.reduce((sum, f) => sum + Number(f.paidAmount || 0), 0) ?? 0
     const balance = studentFees?.reduce((sum, f) => sum + Number(f.balanceAmount || 0), 0) ?? 0
 
@@ -32,27 +39,42 @@ export default function DashboardCharts({
   }
 
   if (isWarden) {
+    const canComplaints = canAccessPath(user, '/app/complaints')
+    const canReports = canAccessPath(user, '/app/occupancy')
+
+    if (!canReports && !canComplaints) return null
+
     return (
       <section>
         <h3 className="dashboard-section-label">Analytics</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <OccupancyDonut
-            occupied={stats?.occupiedBeds}
-            vacant={stats?.vacantBeds}
-            loading={chartsLoading}
-          />
-          <ComplaintsBarChart
-            open={stats?.openComplaints}
-            inProgress={stats?.inProgressComplaints}
-            resolved={stats?.resolvedComplaints}
-            loading={chartsLoading}
-          />
+          {canReports && (
+            <OccupancyDonut
+              occupied={stats?.occupiedBeds}
+              vacant={stats?.vacantBeds}
+              loading={chartsLoading}
+            />
+          )}
+          {canComplaints && (
+            <ComplaintsBarChart
+              open={stats?.openComplaints}
+              inProgress={stats?.inProgressComplaints}
+              resolved={stats?.resolvedComplaints}
+              loading={chartsLoading}
+            />
+          )}
         </div>
       </section>
     )
   }
 
   if (isAdmin) {
+    const canFees = canAccessPath(user, '/app/fees')
+    const canComplaints = canAccessPath(user, '/app/complaints')
+    const canReports = canAccessPath(user, '/app/occupancy')
+
+    if (!canReports && !canFees && !canComplaints && !isSuperAdmin) return null
+
     return (
       <section>
         <h3 className="dashboard-section-label">Analytics</h3>
@@ -65,18 +87,22 @@ export default function DashboardCharts({
               loading={chartsLoading}
             />
           )}
-          <OccupancyDonut
-            occupied={stats?.occupiedBeds}
-            vacant={stats?.vacantBeds}
-            loading={chartsLoading}
-          />
-          <FeesStackedBar overview={feeOverview} loading={feesLoading} />
-          <ComplaintsBarChart
-            open={stats?.openComplaints}
-            inProgress={stats?.inProgressComplaints}
-            resolved={stats?.resolvedComplaints}
-            loading={chartsLoading}
-          />
+          {canReports && (
+            <OccupancyDonut
+              occupied={stats?.occupiedBeds}
+              vacant={stats?.vacantBeds}
+              loading={chartsLoading}
+            />
+          )}
+          {canFees && <FeesStackedBar overview={feeOverview} loading={feesLoading} />}
+          {canComplaints && (
+            <ComplaintsBarChart
+              open={stats?.openComplaints}
+              inProgress={stats?.inProgressComplaints}
+              resolved={stats?.resolvedComplaints}
+              loading={chartsLoading}
+            />
+          )}
         </div>
       </section>
     )

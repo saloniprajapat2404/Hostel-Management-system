@@ -8,6 +8,7 @@ import BranchSelector from './BranchSelector'
 import { useBranch } from '../../context/BranchContext'
 import { useDarkMode } from '../../hooks/useDarkMode'
 import { useHostelConfig } from '../../context/HostelConfigContext'
+import { filterNavItems } from '../../constants/screenPermissions'
 import { apiGet } from '../../utils/api'
 import { clearSession, getSession, getToken, saveSession } from '../../utils/auth'
 
@@ -228,7 +229,10 @@ export default function AppShell() {
   const { dark, toggle } = useDarkMode()
   const { hostelName, systemName } = useHostelConfig()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const items = useMemo(() => ROLE_NAV[user?.role] || ROLE_NAV.STUDENT, [user?.role])
+  const items = useMemo(() => {
+    const base = ROLE_NAV[user?.role] || ROLE_NAV.STUDENT
+    return filterNavItems(base, user)
+  }, [user])
   const isDashboard = location.pathname === '/app' || location.pathname === '/app/'
 
   useEffect(() => {

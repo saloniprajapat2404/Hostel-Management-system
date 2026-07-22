@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { apiGet } from '../utils/api'
 import { getSession, refreshSessionUser } from '../utils/auth'
+import { canAccessPath } from '../constants/screenPermissions'
 import { useBranch } from '../context/BranchContext'
 import { buildRecentActivityFromData, buildStudentHistoryFromData } from '../utils/dashboardActivity'
 import DashboardStickyHeader from '../components/dashboard/enterprise/DashboardStickyHeader'
@@ -24,7 +25,7 @@ import FeeCollectionPanel from '../components/dashboard/enterprise/FeeCollection
 import DashboardCharts from '../components/dashboard/charts/DashboardCharts'
 import { KpiGridSkeleton } from '../components/ui/DashboardUi'
 
-function buildKpis(stats, role, studentFeeBalance, feesLoading) {
+function buildKpis(stats, role, studentFeeBalance, feesLoading, user) {
   if (!stats) return []
 
   if (role === 'STUDENT') {
@@ -32,12 +33,14 @@ function buildKpis(stats, role, studentFeeBalance, feesLoading) {
       ? '…'
       : `₹${Number(studentFeeBalance || 0).toLocaleString('en-IN')}`
 
-    return [
+    const pills = [
       { label: 'My room', value: stats.myRoomNumber || '—', tone: 'blue', icon: Building2, to: '/app/my-room' },
       { label: 'Fee balance', value: balanceLabel, tone: 'amber', icon: IndianRupee, to: '/app/my-fees' },
       { label: 'Open complaints', value: stats.myOpenComplaints ?? 0, tone: 'red', icon: MessageSquare, to: '/app/complaints' },
       { label: 'Active notice', value: stats.activeNotices ?? 0, tone: 'slate', icon: Bell, to: '/app/notices' },
     ]
+
+    return pills.filter((pill) => !pill.to || canAccessPath(user, pill.to))
   }
 
   const kpis = []
@@ -56,7 +59,7 @@ function buildKpis(stats, role, studentFeeBalance, feesLoading) {
     kpis.push({ label: 'Open complaints', value: stats.myOpenComplaints, tone: 'red', icon: MessageSquareWarning, to: '/app/complaints' })
   }
 
-  return kpis.slice(0, 4)
+  return kpis.filter((kpi) => !kpi.to || canAccessPath(user, kpi.to)).slice(0, 4)
 }
 
 export default function Dashboard() {
@@ -68,7 +71,6 @@ export default function Dashboard() {
     return <Navigate to="/superadmin" replace />
   }
 
-  const quickAccessRole = getSession()?.role || role
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const isStudent = role === 'STUDENT'
 
@@ -100,21 +102,26 @@ export default function Dashboard() {
   }, [])
 
   const loadSecondaryData = useCallback(async () => {
-    setFeesLoading(isAdmin || isStudent)
+    setFeesLoading(isAdmin || (isStudent && canAccessPath(user, '/app/my-fees')))
     setActivityLoading(true)
     setHistoryLoading(true)
 
     try {
       if (isAdmin) {
+        const canFees = canAccessPath(user, '/app/fees')
+        const canComplaints = canAccessPath(user, '/app/complaints')
+        const canHostel = canAccessPath(user, '/app/admissions')
+        const canAttendance = canAccessPath(user, '/app/attendance')
+
         const [overview, students, admissions, complaints, notices, allocations, attendance] =
           await Promise.all([
-            apiGet('/api/fees/overview').catch(() => null),
-            apiGet('/api/fees/students').catch(() => []),
-            apiGet('/api/admissions').catch(() => []),
-            apiGet('/api/complaints').catch(() => []),
-            apiGet('/api/notices').catch(() => []),
-            apiGet('/api/allocations').catch(() => []),
-            apiGet('/api/attendance').catch(() => []),
+            canFees ? apiGet('/api/fees/overview').catch(() => null) : Promise.resolve(null),
+            canFees ? apiGet('/api/fees/students').catch(() => []) : Promise.resolve([]),
+            canHostel ? apiGet('/api/admissions').catch(() => []) : Promise.resolve([]),
+            canComplaints ? apiGet('/api/complaints').catch(() => []) : Promise.resolve([]),
+            canComplaints ? apiGet('/api/notices').catch(() => []) : Promise.resolve([]),
+            canHostel ? apiGet('/api/allocations').catch(() => []) : Promise.resolve([]),
+            canAttendance ? apiGet('/api/attendance').catch(() => []) : Promise.resolve([]),
           ])
 
         const studentList = students || []
@@ -135,10 +142,14 @@ export default function Dashboard() {
           buildStudentHistoryFromData(role, { limitPerCategory: 6, feeSummaries: studentList, ...shared }),
         )
       } else if (isStudent) {
+        const canFees = canAccessPath(user, '/app/my-fees')
+        const canComplaints = canAccessPath(user, '/app/complaints')
+        const canNotices = canAccessPath(user, '/app/notices')
+
         const [fees, complaints, notices, allocations] = await Promise.all([
-          apiGet('/api/users/me/fees').catch(() => []),
-          apiGet('/api/complaints').catch(() => []),
-          apiGet('/api/notices').catch(() => []),
+          canFees ? apiGet('/api/users/me/fees').catch(() => []) : Promise.resolve([]),
+          canComplaints ? apiGet('/api/complaints').catch(() => []) : Promise.resolve([]),
+          canNotices ? apiGet('/api/notices').catch(() => []) : Promise.resolve([]),
           apiGet('/api/allocations/me').then((a) => (a ? [a] : [])).catch(() => []),
         ])
         const feesList = fees || []
@@ -164,10 +175,13 @@ export default function Dashboard() {
           }),
         )
       } else {
+        const canComplaints = canAccessPath(user, '/app/complaints')
+        const canHostel = canAccessPath(user, '/app/admissions')
+
         const [complaints, notices, allocations] = await Promise.all([
-          apiGet('/api/complaints').catch(() => []),
-          apiGet('/api/notices').catch(() => []),
-          apiGet('/api/allocations').catch(() => []),
+          canComplaints ? apiGet('/api/complaints').catch(() => []) : Promise.resolve([]),
+          canComplaints ? apiGet('/api/notices').catch(() => []) : Promise.resolve([]),
+          canHostel ? apiGet('/api/allocations').catch(() => []) : Promise.resolve([]),
         ])
         const shared = {
           admissions: [],
@@ -194,7 +208,7 @@ export default function Dashboard() {
       setActivityLoading(false)
       setHistoryLoading(false)
     }
-  }, [isAdmin, isStudent, role, user?.id, user?.email])
+  }, [isAdmin, isStudent, role, user])
 
   useEffect(() => {
     loadStats()
@@ -222,8 +236,8 @@ export default function Dashboard() {
   )
 
   const kpis = useMemo(
-    () => buildKpis(stats, role, studentFeeBalance, feesLoading && isStudent),
-    [stats, role, studentFeeBalance, feesLoading, isStudent],
+    () => buildKpis(stats, role, studentFeeBalance, feesLoading && isStudent, user),
+    [stats, role, studentFeeBalance, feesLoading, isStudent, user],
   )
 
   return (
@@ -247,12 +261,13 @@ export default function Dashboard() {
 
           {!statsLoading && stats && <CompactKpiGrid pills={kpis} />}
 
-          <QuickActionsBar role={quickAccessRole} />
+          <QuickActionsBar user={user} />
 
           {!statsLoading && stats && (
             <>
               <DashboardCharts
                 role={role}
+                user={user}
                 stats={stats}
                 feeOverview={feeOverview}
                 studentFees={studentFees}
@@ -260,11 +275,13 @@ export default function Dashboard() {
                 feesLoading={feesLoading}
               />
 
-              {isAdmin && <FeeCollectionPanel students={feeStudents} loading={feesLoading} />}
+              {isAdmin && canAccessPath(user, '/app/fees') && (
+                <FeeCollectionPanel students={feeStudents} loading={feesLoading} />
+              )}
             </>
           )}
 
-          <StudentHistoryPanel role={role} history={studentHistory} loading={historyLoading} />
+          <StudentHistoryPanel role={role} history={studentHistory} loading={historyLoading} user={user} />
 
           <RecentActivityTimeline items={activityItems} role={role} loading={activityLoading} />
         </div>

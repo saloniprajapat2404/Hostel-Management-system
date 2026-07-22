@@ -2,6 +2,7 @@ package com.takshak.hostel.config;
 
 import com.takshak.hostel.security.BranchFilter;
 import com.takshak.hostel.security.JwtAuthFilter;
+import com.takshak.hostel.security.ScreenPermissionFilter;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,14 +33,17 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final BranchFilter branchFilter;
+    private final ScreenPermissionFilter screenPermissionFilter;
     private final UserDetailsService userDetailsService;
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             BranchFilter branchFilter,
+            ScreenPermissionFilter screenPermissionFilter,
             UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.branchFilter = branchFilter;
+        this.screenPermissionFilter = screenPermissionFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -61,7 +65,8 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(branchFilter, JwtAuthFilter.class);
+                .addFilterAfter(branchFilter, JwtAuthFilter.class)
+                .addFilterAfter(screenPermissionFilter, BranchFilter.class);
 
         return http.build();
     }

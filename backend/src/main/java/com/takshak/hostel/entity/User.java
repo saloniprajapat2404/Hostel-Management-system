@@ -48,6 +48,12 @@ public class User {
 
     private boolean active = true;
 
+    /** Per-module screen access; empty = fall back to role defaults. */
+    private java.util.Map<String, Boolean> screenPermissions = new java.util.HashMap<>();
+
+    /** Can grant or adjust screen access for other users. */
+    private boolean accessGrant = true;
+
     private Instant createdAt = Instant.now();
 
     public User() {
@@ -195,5 +201,21 @@ public class User {
 
     public void setBranchId(String branchId) {
         this.branchId = branchId;
+    }
+
+    public java.util.Map<String, Boolean> getScreenPermissions() {
+        return screenPermissions;
+    }
+
+    public void setScreenPermissions(java.util.Map<String, Boolean> screenPermissions) {
+        this.screenPermissions = screenPermissions != null ? screenPermissions : new java.util.HashMap<>();
+    }
+
+    public boolean isAccessGrant() {
+        return accessGrant;
+    }
+
+    public void setAccessGrant(boolean accessGrant) {
+        this.accessGrant = accessGrant;
     }
 }

@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Crown,
   GraduationCap,
+  LayoutGrid,
   MapPin,
   Shield,
   UserCog,
@@ -12,7 +13,9 @@ import { apiPost } from '../utils/api'
 import { getSession } from '../utils/auth'
 import { mobileInputProps, normalizeMobile10 } from '../utils/phoneHelpers'
 import { validateContactProfileFields } from '../utils/profileFieldHelpers'
+import { createDefaultScreenPermissions } from '../constants/screenPermissions'
 import OnOffToggle from '../components/ui/OnOffToggle'
+import ScreenPermissionsSection from '../components/users/ScreenPermissionsSection'
 import {
   ActionButton,
   Card,
@@ -132,6 +135,8 @@ export default function AddUserPage() {
   )
   const [userType, setUserType] = useState(() => allowedTypes[0]?.value || 'STUDENT')
   const [form, setForm] = useState(emptyForm)
+  const [screenPermissions, setScreenPermissions] = useState(createDefaultScreenPermissions)
+  const [accessGrant, setAccessGrant] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -168,11 +173,15 @@ export default function AddUserPage() {
         phone: normalizeMobile10(form.phone) || null,
         active: canToggleActive ? Boolean(form.active) : true,
         ...buildProfileBody(form),
+        screenPermissions,
+        accessGrant,
       })
       setSuccess(
         `${selected.label} created successfully${form.active ? '' : ' (inactive — cannot sign in)'}.`,
       )
       setForm(emptyForm)
+      setScreenPermissions(createDefaultScreenPermissions())
+      setAccessGrant(true)
     } catch (err) {
       setError(err.message || 'Registration failed')
     } finally {
@@ -440,6 +449,15 @@ export default function AddUserPage() {
             </Field>
           </FormSection>
 
+          <ScreenPermissionsSection
+            permissions={screenPermissions}
+            accessGrant={accessGrant}
+            onPermissionChange={(key, enabled) =>
+              setScreenPermissions((prev) => ({ ...prev, [key]: enabled }))
+            }
+            onAccessGrantChange={setAccessGrant}
+          />
+
           <div className="add-user-actions flex flex-wrap items-center gap-3 border-t border-slate-200/80 pt-5 dark:border-slate-800">
             <ActionButton type="submit" disabled={saving} className="min-w-[160px] shadow-md shadow-primary/20">
               {createUserButtonLabel(userType, saving)}
@@ -449,6 +467,8 @@ export default function AddUserPage() {
               variant="ghost"
               onClick={() => {
                 setForm(emptyForm)
+                setScreenPermissions(createDefaultScreenPermissions())
+                setAccessGrant(true)
                 setError('')
                 setSuccess('')
               }}

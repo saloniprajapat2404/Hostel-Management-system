@@ -5,6 +5,7 @@ import Input from './ui/Input'
 import Button from './ui/Button'
 import Checkbox from './ui/Checkbox'
 import { login, saveSession, validateIdentifier } from '../utils/auth'
+import { firstAllowedAppPath } from '../constants/screenPermissions'
 import { t } from '../utils/translations'
 import HostelLogo from './HostelLogo'
 
@@ -38,7 +39,8 @@ export default function LoginForm({ lang, hostelName, onError, onSuccessToast })
       saveSession({ token: result.token, user: result.user }, data.remember)
       setSuccess(true)
       onSuccessToast(t(lang, 'success'))
-      const target = result.user?.role === 'SUPER_ADMIN' ? '/superadmin' : '/app'
+      const target =
+        result.user?.role === 'SUPER_ADMIN' ? '/superadmin' : firstAllowedAppPath(result.user)
       setTimeout(() => navigate(target), 800)
     } catch (err) {
       triggerShake()

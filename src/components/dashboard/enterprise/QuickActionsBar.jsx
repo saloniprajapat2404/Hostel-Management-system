@@ -9,6 +9,8 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react'
+import { filterQuickActions } from '../../../constants/screenPermissions'
+import { getSession } from '../../../utils/auth'
 
 const ACTIONS = {
   rooms: {
@@ -84,13 +86,16 @@ const ACTION_ORDER = [
 const iconClass =
   'h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#3B82F6] motion-reduce:transform-none'
 
-function QuickActionsBar({ role }) {
+function QuickActionsBar({ user: userProp }) {
+  const user = userProp || getSession()
+
   const items = useMemo(
     () =>
-      ACTION_ORDER.map((key) => ACTIONS[key])
-        .filter(Boolean)
-        .filter((action) => action.roles.includes(role)),
-    [role],
+      filterQuickActions(
+        ACTION_ORDER.map((key) => ACTIONS[key]).filter(Boolean),
+        user,
+      ),
+    [user],
   )
 
   if (!items.length) return null

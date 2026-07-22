@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ToggleSection, DetailList } from '../../ui/DashboardUi'
 import { formatActivityWhen } from '../../../utils/dashboardActivity'
+import { canAccessPath } from '../../../constants/screenPermissions'
 
 const SECTION_TONE = {
   admissions: 'teal',
@@ -20,13 +21,34 @@ const SECTION_TONE = {
 }
 
 const SECTIONS = [
-  { key: 'admissions', label: 'Admissions', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'STUDENT'], tone: 'teal' },
-  { key: 'feePayments', label: 'Fee payments', icon: IndianRupee, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'green' },
-  { key: 'roomChanges', label: 'Room changes', icon: BedDouble, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'default' },
-  { key: 'complaints', label: 'Complaints', icon: MessageSquare, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'amber' },
+  { key: 'admissions', label: 'Admissions', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'STUDENT'], tone: 'teal', path: '/app/admissions' },
+  {
+    key: 'feePayments',
+    label: 'Fee payments',
+    icon: IndianRupee,
+    roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'],
+    tone: 'green',
+    pathByRole: { STUDENT: '/app/my-fees', default: '/app/fees' },
+  },
+  {
+    key: 'roomChanges',
+    label: 'Room changes',
+    icon: BedDouble,
+    roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'],
+    tone: 'default',
+    pathByRole: { STUDENT: '/app/my-room', default: '/app/rooms' },
+  },
+  { key: 'complaints', label: 'Complaints', icon: MessageSquare, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'amber', path: '/app/complaints' },
   { key: 'leaveRequests', label: 'Leave requests', icon: LogOut, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'red' },
-  { key: 'notices', label: 'Notice', icon: Bell, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'slate' },
+  { key: 'notices', label: 'Notice', icon: Bell, roles: ['ADMIN', 'SUPER_ADMIN', 'WARDEN', 'STUDENT'], tone: 'slate', path: '/app/notices' },
 ]
+
+function sectionAccessPath(section, role) {
+  if (section.pathByRole) {
+    return section.pathByRole[role] || section.pathByRole.default
+  }
+  return section.path
+}
 
 function toDetailItems(items, sectionKey) {
   const tone = SECTION_TONE[sectionKey] || 'default'
@@ -52,10 +74,15 @@ function HistorySkeleton() {
   )
 }
 
-function StudentHistoryPanel({ role, history, loading = false }) {
+function StudentHistoryPanel({ role, history, loading = false, user }) {
   const sections = useMemo(
-    () => SECTIONS.filter((section) => section.roles.includes(role)),
-    [role],
+    () =>
+      SECTIONS.filter((section) => {
+        if (!section.roles.includes(role)) return false
+        const path = sectionAccessPath(section, role)
+        return !path || canAccessPath(user, path)
+      }),
+    [role, user],
   )
   const [openKey, setOpenKey] = useState(null)
 
