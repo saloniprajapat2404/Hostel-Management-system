@@ -25,6 +25,12 @@
     @apply text-slate-900 dark:text-slate-100;
   }
 
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  textarea,
+  select {
+    @apply bg-white dark:bg-slate-800;
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -32,6 +38,8 @@
   select:-webkit-autofill {
     -webkit-text-fill-color: #0f172a;
     caret-color: #0f172a;
+    -webkit-box-shadow: 0 0 0 1000px #f8fafc inset;
+    box-shadow: 0 0 0 1000px #f8fafc inset;
     transition: background-color 9999s ease-out 0s;
   }
 
@@ -42,6 +50,8 @@
   .dark select:-webkit-autofill {
     -webkit-text-fill-color: #f1f5f9;
     caret-color: #f1f5f9;
+    -webkit-box-shadow: 0 0 0 1000px #1e293b inset;
+    box-shadow: 0 0 0 1000px #1e293b inset;
   }
 }
 

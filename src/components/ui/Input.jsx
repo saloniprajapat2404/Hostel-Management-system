@@ -68,10 +68,14 @@ const Input = forwardRef(function Input(
             props.onBlur?.(e)
           }}
           className={[
-            'peer w-full rounded-xl border bg-slate-50/80 px-4 pb-2.5 pt-6 text-sm text-slate-900 outline-none transition-all duration-200',
-            'border-slate-200/80 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15',
-            'dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-primary-light dark:focus:bg-slate-800 dark:focus:ring-primary-light/15',
-            error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : '',
+            'peer w-full rounded-xl border px-4 pb-2.5 pt-6 text-sm outline-none transition-all duration-200',
+            'border-slate-200/80 bg-white text-slate-900',
+            'focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15',
+            'dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100',
+            'dark:focus:border-primary-light dark:focus:bg-slate-800 dark:focus:ring-primary-light/15',
+            'dark:[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#1e293b]',
+            'dark:[&:-webkit-autofill]:[-webkit-text-fill-color:#f1f5f9]',
+            error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-400' : '',
             showToggle ? 'pr-12' : '',
           ].join(' ')}
           placeholder=" "
