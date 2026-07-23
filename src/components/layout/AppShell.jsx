@@ -44,7 +44,8 @@ const ADMIN_NAV = [
 
 const SUPER_ADMIN_NAV = [
   { to: '/superadmin', label: 'All Branches', end: true },
-  { to: '/superadmin/branches', label: 'Manage Branches' },
+  { to: '/superadmin/cities', label: 'Manage Cities' },
+  { to: '/superadmin/branches', label: 'All Localities' },
   { to: '/app', label: 'Branch Dashboard' },
   { to: '/app/add-user', label: 'Add User' },
   {

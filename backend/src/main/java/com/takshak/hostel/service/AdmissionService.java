@@ -42,6 +42,7 @@ public class AdmissionService {
         this.notificationService = notificationService;
         this.branchScope = branchScope;
         this.branchRepository = branchRepository;
+
     }
 
     public List<AdmissionRequestDto> list() {

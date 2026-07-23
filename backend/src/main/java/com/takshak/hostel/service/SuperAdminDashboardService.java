@@ -94,6 +94,7 @@ public class SuperAdminDashboardService {
                     branch.getSlug(),
                     branch.getCode(),
                     branch.getCity(),
+                    branch.getAddress(),
                     students,
                     roomCount,
                     branchTotalBeds,

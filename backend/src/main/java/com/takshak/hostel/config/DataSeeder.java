@@ -253,20 +253,73 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void ensureBranches() {
-        seedBranchIfMissing("Takshak Hostel - Vijay Nagar", "VJN", "vijay-nagar", "Vijay Nagar",
-                "12, Scheme 78, Vijay Nagar", "9001110001", "vijaynagar@takshak.edu");
-        seedBranchIfMissing("Takshak Hostel - MP Nagar", "MPN", "mp-nagar", "MP Nagar",
-                "45, Zone II, MP Nagar", "9001110002", "mpnagar@takshak.edu");
-        seedBranchIfMissing("Takshak Hostel - Indore", "IND", "indore", "Indore",
-                "88, AB Road, Indore", "9001110003", "indore@takshak.edu");
-        seedBranchIfMissing("Takshak Hostel - Bhopal", "BPL", "bhopal", "Bhopal",
-                "22, Arera Colony, Bhopal", "9001110004", "bhopal@takshak.edu");
+        // City = Indore / Bhopal; name = locality campus
+        seedBranchIfMissing("Vijay Nagar", "VJN", "vijay-nagar", "Indore",
+                "12, Scheme 78, Vijay Nagar, Indore", "9001110001", "vijaynagar@takshak.edu");
+        seedBranchIfMissing("MP Nagar", "MPN", "mp-nagar", "Indore",
+                "45, Zone II, MP Nagar, Indore", "9001110002", "mpnagar@takshak.edu");
+        seedBranchIfMissing("AB Road", "ABR", "ab-road", "Indore",
+                "88, AB Road, Indore", "9001110003", "abroad@takshak.edu");
+        seedBranchIfMissing("Rajwada", "RJW", "rajwada", "Indore",
+                "Near Rajwada Palace, Indore", "9001110005", "rajwada@takshak.edu");
+        seedBranchIfMissing("Palasia", "PLS", "palasia", "Indore",
+                "14, Palasia Square, Indore", "9001110006", "palasia@takshak.edu");
+        seedBranchIfMissing("Rajendra Nagar", "RJN", "rajendra-nagar", "Indore",
+                "7, Rajendra Nagar, Indore", "9001110007", "rajendranagar@takshak.edu");
+        seedBranchIfMissing("Arera Colony", "ARC", "arera-colony", "Bhopal",
+                "22, Arera Colony, Bhopal", "9001110004", "arera@takshak.edu");
+        migrateBranchCityLocality();
+    }
+
+    /**
+     * Normalize legacy flat branches into City → Locality (name = locality, city = main city).
+     * Keeps existing branch IDs / slugs where possible so operational data stays linked.
+     */
+    private void migrateBranchCityLocality() {
+        migrateBranchSlug("vijay-nagar", "Vijay Nagar", "Indore",
+                "12, Scheme 78, Vijay Nagar, Indore");
+        migrateBranchSlug("mp-nagar", "MP Nagar", "Indore",
+                "45, Zone II, MP Nagar, Indore");
+        // Legacy "indore" slug → AB Road locality under Indore city
+        migrateBranchSlug("indore", "AB Road", "Indore", "88, AB Road, Indore");
+        // Legacy "bhopal" slug → Arera Colony under Bhopal city
+        migrateBranchSlug("bhopal", "Arera Colony", "Bhopal", "22, Arera Colony, Bhopal");
+    }
+
+    private void migrateBranchSlug(String slug, String locality, String city, String address) {
+        branchRepository.findBySlug(slug).ifPresent(branch -> {
+            boolean changed = false;
+            if (!locality.equals(branch.getName())) {
+                branch.setName(locality);
+                changed = true;
+            }
+            if (branch.getCity() == null || !city.equalsIgnoreCase(branch.getCity().trim())) {
+                branch.setCity(city);
+                changed = true;
+            }
+            if (branch.getAddress() == null || branch.getAddress().isBlank()) {
+                branch.setAddress(address);
+                changed = true;
+            }
+            if (changed) {
+                branch.setUpdatedAt(Instant.now());
+                branchRepository.save(branch);
+                log.info("Migrated branch {} → city={}, locality={}", slug, city, locality);
+            }
+        });
     }
 
     private void seedBranchIfMissing(
             String name, String code, String slug, String city,
             String address, String phone, String email) {
         if (branchRepository.findBySlug(slug).isPresent()) {
+            return;
+        }
+        // Avoid creating a second AB Road / Arera if legacy slug still exists under old code
+        if ("ab-road".equals(slug) && branchRepository.findBySlug("indore").isPresent()) {
+            return;
+        }
+        if ("arera-colony".equals(slug) && branchRepository.findBySlug("bhopal").isPresent()) {
             return;
         }
         Branch branch = new Branch();
@@ -279,7 +332,7 @@ public class DataSeeder implements CommandLineRunner {
         branch.setEmail(email);
         branch.setStatus(BranchStatus.ACTIVE);
         branchRepository.save(branch);
-        log.info("Seeded branch: {}", name);
+        log.info("Seeded locality branch: {} / {}", city, name);
     }
 
     private void seedBranchAdmins(String encoded) {

@@ -1,6 +1,7 @@
 package com.takshak.hostel.controller;
 
 import com.takshak.hostel.dto.BranchDto;
+import com.takshak.hostel.dto.CitySummaryDto;
 import com.takshak.hostel.dto.CreateBranchRequest;
 import com.takshak.hostel.dto.SuperAdminDashboardDto;
 import com.takshak.hostel.dto.UpdateBranchRequest;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +34,14 @@ public class BranchController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public List<BranchDto> list() {
-        return branchService.list();
+    public List<BranchDto> list(@RequestParam(required = false) String city) {
+        return branchService.list(city);
+    }
+
+    @GetMapping("/cities")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public List<CitySummaryDto> cities() {
+        return branchService.listCities();
     }
 
     @GetMapping("/{idOrSlug}")

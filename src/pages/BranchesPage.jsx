@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/api'
 import Button from '../components/ui/Button'
@@ -37,10 +37,16 @@ function slugify(value) {
 }
 
 export default function BranchesPage() {
+  const navigate = useNavigate()
+  const { cityName } = useParams()
+  const [searchParams] = useSearchParams()
+  const cityFromRoute = cityName ? decodeURIComponent(cityName) : ''
+  const cityFilter = cityFromRoute || searchParams.get('city') || ''
+
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(() => ({ ...emptyForm, city: cityFilter }))
   const [editingId, setEditingId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -49,27 +55,41 @@ export default function BranchesPage() {
     setLoading(true)
     setError('')
     try {
-      const list = await apiGet('/api/branches')
+      const path = cityFilter
+        ? `/api/branches?city=${encodeURIComponent(cityFilter)}`
+        : '/api/branches'
+      const list = await apiGet(path)
       setBranches(Array.isArray(list) ? list : [])
     } catch (err) {
       setError(err.message || 'Failed to load branches')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [cityFilter])
 
   useEffect(() => {
     loadBranches()
   }, [loadBranches])
 
+  useEffect(() => {
+    if (!editingId) {
+      setForm((prev) => ({ ...prev, city: cityFilter || prev.city }))
+    }
+  }, [cityFilter, editingId])
+
+  const pageTitle = useMemo(
+    () => (cityFilter ? `${cityFilter} — Locality Branches` : 'All Locality Branches'),
+    [cityFilter],
+  )
+
   const resetForm = () => {
-    setForm(emptyForm)
+    setForm({ ...emptyForm, city: cityFilter })
     setEditingId(null)
     setShowForm(false)
   }
 
   const startCreate = () => {
-    setForm(emptyForm)
+    setForm({ ...emptyForm, city: cityFilter })
     setEditingId(null)
     setShowForm(true)
   }
@@ -79,7 +99,7 @@ export default function BranchesPage() {
       name: branch.name || '',
       code: branch.code || '',
       slug: branch.slug || '',
-      city: branch.city || '',
+      city: branch.city || cityFilter || '',
       address: branch.address || '',
       phone: branch.phone || '',
       email: branch.email || '',
@@ -94,6 +114,12 @@ export default function BranchesPage() {
       ...prev,
       name,
       slug: editingId ? prev.slug : slugify(name),
+      code: editingId
+        ? prev.code
+        : name
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(0, 6)
+            .toUpperCase() || prev.code,
     }))
   }
 
@@ -119,6 +145,9 @@ export default function BranchesPage() {
       }
       resetForm()
       await loadBranches()
+      if (!cityFilter && payload.city) {
+        navigate(`/superadmin/cities/${encodeURIComponent(payload.city)}`)
+      }
     } catch (err) {
       setError(err.message || 'Failed to save branch')
     } finally {
@@ -127,7 +156,7 @@ export default function BranchesPage() {
   }
 
   const handleDelete = async (branch) => {
-    if (!window.confirm(`Delete "${branch.name}"? This cannot be undone.`)) return
+    if (!window.confirm(`Delete locality "${branch.name}" in ${branch.city}? This cannot be undone.`)) return
     setError('')
     try {
       await apiDelete(`/api/branches/${branch.id}`)
@@ -142,22 +171,26 @@ export default function BranchesPage() {
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          to="/superadmin"
+          to={cityFilter ? '/superadmin/cities' : '/superadmin'}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to overview
+          {cityFilter ? 'Back to cities' : 'Back to overview'}
         </Link>
       </div>
 
       <PageHeader
-        title="Manage Branches"
-        subtitle="Add, edit, or deactivate Takshak Hostel branches"
+        title={pageTitle}
+        subtitle={
+          cityFilter
+            ? `City: ${cityFilter}. Branch name = locality (e.g. Vijay Nagar). Address is shown for each campus.`
+            : 'Browse all locality campuses. Prefer managing them under a city.'
+        }
         showBack={false}
         actions={
           <Button type="button" className="w-auto" onClick={startCreate}>
             <Plus className="h-4 w-4" />
-            Add Branch
+            Add Locality Branch
           </Button>
         }
       />
@@ -167,16 +200,26 @@ export default function BranchesPage() {
       {showForm && (
         <Card className="p-5">
           <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-            {editingId ? 'Edit Branch' : 'New Branch'}
+            {editingId ? 'Edit Locality Branch' : 'New Locality Branch'}
           </h2>
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-            <Field label="Branch Name" required>
+            <Field label="City" required>
+              <input
+                className={fieldClass}
+                value={form.city}
+                onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
+                required
+                placeholder="Indore"
+                readOnly={Boolean(cityFilter) && !editingId}
+              />
+            </Field>
+            <Field label="Locality / Branch Name" required>
               <input
                 className={fieldClass}
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 required
-                placeholder="Takshak Hostel - Vijay Nagar"
+                placeholder="Vijay Nagar"
               />
             </Field>
             <Field label="Code" required>
@@ -198,20 +241,13 @@ export default function BranchesPage() {
                 placeholder="vijay-nagar"
               />
             </Field>
-            <Field label="City" required>
-              <input
-                className={fieldClass}
-                value={form.city}
-                onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
-                required
-                placeholder="Vijay Nagar"
-              />
-            </Field>
-            <Field label="Address">
+            <Field label="Full Address" required>
               <input
                 className={fieldClass}
                 value={form.address}
                 onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                required
+                placeholder="12, Scheme 78, Vijay Nagar, Indore"
               />
             </Field>
             <Field label="Phone">
@@ -252,17 +288,19 @@ export default function BranchesPage() {
       )}
 
       {loading ? (
-        <LoadingBlock label="Loading branches…" />
+        <LoadingBlock label="Loading locality branches…" />
       ) : branches.length === 0 ? (
-        <EmptyBlock message="No branches found. Create your first branch to get started." />
+        <EmptyBlock message="No locality branches found. Add the first campus for this city." />
       ) : (
-        <Table headers={['Branch', 'City', 'Code', 'Slug', 'Status', '']}>
+        <Table headers={['Locality', 'City', 'Address', 'Code', 'Status', '']}>
           {branches.map((branch) => (
             <tr key={branch.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
               <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{branch.name}</td>
               <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{branch.city}</td>
+              <td className="max-w-xs px-4 py-3 text-slate-600 dark:text-slate-300">
+                {branch.address || '—'}
+              </td>
               <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{branch.code}</td>
-              <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{branch.slug}</td>
               <td className="px-4 py-3">
                 <StatusBadge tone={branch.status === 'ACTIVE' ? 'green' : 'slate'}>
                   {branch.status === 'ACTIVE' ? 'Active' : 'Inactive'}

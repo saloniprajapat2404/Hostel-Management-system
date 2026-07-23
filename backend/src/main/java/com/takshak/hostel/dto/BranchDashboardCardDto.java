@@ -8,6 +8,7 @@ public record BranchDashboardCardDto(
         String slug,
         String code,
         String city,
+        String address,
         long studentCount,
         long roomCount,
         long totalBeds,

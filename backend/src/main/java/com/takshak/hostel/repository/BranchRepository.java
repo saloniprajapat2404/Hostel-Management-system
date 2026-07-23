@@ -13,5 +13,10 @@ public interface BranchRepository extends MongoRepository<Branch, String> {
     boolean existsByCodeIgnoreCase(String code);
     List<Branch> findAllByOrderByNameAsc();
     List<Branch> findByStatusOrderByNameAsc(BranchStatus status);
+    List<Branch> findByCityIgnoreCaseOrderByNameAsc(String city);
+    boolean existsByCityIgnoreCaseAndNameIgnoreCase(String city, String name);
+    Optional<Branch> findByCityIgnoreCaseAndNameIgnoreCase(String city, String name);
     long countByStatus(BranchStatus status);
+    long countByCityIgnoreCase(String city);
+    long countByCityIgnoreCaseAndStatus(String city, BranchStatus status);
 }

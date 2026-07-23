@@ -14,6 +14,8 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
 import BranchesPage from './pages/BranchesPage'
 
+import CitiesPage from './pages/CitiesPage'
+
 import BranchRedirectPage from './pages/BranchRedirectPage'
 
 import AddUserPage from './pages/AddUserPage'
@@ -69,6 +71,10 @@ function App() {
         <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
 
           <Route path="/superadmin" element={<SuperAdminDashboard />} />
+
+          <Route path="/superadmin/cities" element={<CitiesPage />} />
+
+          <Route path="/superadmin/cities/:cityName" element={<BranchesPage />} />
 
           <Route path="/superadmin/branches" element={<BranchesPage />} />
 

@@ -92,12 +92,15 @@ function BranchCard({ branch, index, onOpen }) {
               <Building2 className="h-7 w-7" strokeWidth={1.75} />
             </span>
             <div className="min-w-0 pt-0.5">
-              <h3 className="text-lg font-bold leading-snug tracking-tight text-[var(--dash-text)]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/80 dark:text-primary-light">
+                {branch.city}
+              </p>
+              <h3 className="mt-0.5 text-lg font-bold leading-snug tracking-tight text-[var(--dash-text)]">
                 {branch.name}
               </h3>
-              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-[var(--dash-muted)]">
-                <MapPin className="h-4 w-4 shrink-0 text-primary/80" />
-                <span className="truncate">{branch.city}</span>
+              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-[var(--dash-muted)]">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary/80" />
+                <span className="line-clamp-2">{branch.address || branch.city}</span>
               </p>
             </div>
           </div>
@@ -272,11 +275,11 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
               <Link
-                to="/superadmin/branches"
+                to="/superadmin/cities"
                 className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-2xl border border-[var(--dash-border)] bg-[var(--dash-surface)] px-5 py-3.5 text-sm font-semibold text-[var(--dash-text)] shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary lg:self-center"
               >
                 <Settings2 className="h-4 w-4" />
-                Manage Branches
+                Manage Cities
               </Link>
             </div>
           </section>
@@ -326,17 +329,17 @@ export default function SuperAdminDashboard() {
               <section>
                 <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <p className="dashboard-section-label">Branch Overview</p>
+                    <p className="dashboard-section-label">City → Locality</p>
                     <h2 className="text-xl font-bold tracking-tight text-[var(--dash-text)]">
                       Hostel locations
                     </h2>
                     <p className="mt-1 text-sm text-[var(--dash-muted)]">
-                      Select a branch to manage students, rooms, fees, and more.
+                      Cities group locality campuses. Open a locality to manage students, rooms, and fees.
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-2 rounded-full border border-[var(--dash-border-subtle)] bg-[var(--dash-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--dash-muted)]">
                     <LayoutGrid className="h-3.5 w-3.5" />
-                    {data.branches?.length || 0} branches
+                    {data.branches?.length || 0} localities
                   </span>
                 </div>
 
@@ -349,10 +352,34 @@ export default function SuperAdminDashboard() {
                     <p className="mt-4 text-sm text-[var(--dash-muted)]">No active branches found.</p>
                   </div>
                 ) : (
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    {data.branches.map((branch, index) => (
-                      <BranchCard key={branch.id} branch={branch} index={index} onOpen={openBranch} />
-                    ))}
+                  <div className="space-y-8">
+                    {Object.entries(
+                      data.branches.reduce((acc, branch) => {
+                        const city = branch.city || 'Unassigned'
+                        if (!acc[city]) acc[city] = []
+                        acc[city].push(branch)
+                        return acc
+                      }, {}),
+                    )
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([city, cityBranches]) => (
+                        <div key={city}>
+                          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <h3 className="text-base font-bold text-[var(--dash-text)]">{city}</h3>
+                            <Link
+                              to={`/superadmin/cities/${encodeURIComponent(city)}`}
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
+                              Manage {city} localities →
+                            </Link>
+                          </div>
+                          <div className="grid gap-6 lg:grid-cols-2">
+                            {cityBranches.map((branch, index) => (
+                              <BranchCard key={branch.id} branch={branch} index={index} onOpen={openBranch} />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 )}
               </section>
